@@ -1,17 +1,12 @@
 #!/usr/bin/env bash
-# This script assumes that it's being ran inside of a
-# quay.io/pypa/manylinux2014_x86_64 OCI image.
-#
-# To run manually:
-# podman run --rm -it -v$PWD:$PWD:z -w$PWD quay.io/pypa/manylinux2014_x86_64 ./build_using_manylinux2014
 set -ex
 
 petsc_rev="v3.19.1"
-pflotran_ogs_version="1.8"
-pflotran_ogs_rev="11"
+cirrus_version="1.9"
 
 petsc_url="https://gitlab.com/petsc/petsc.git"
-pflotran_ogs_url="https://bitbucket.org/opengosim/pflotran_ogs_${pflotran_ogs_version}.git"
+cirrus_token="ATCTT3xFfGN0j1udFKgGz_MVnVnnSz2NKXzErXgwXjEx7iQFKX6u0AbUAmZjZyPbCMejRGBfeL0MWjATy6RnY-MJ-OiVUmf4q_OcItL8Iz9X20H2hbFwwdeRq6QzPMjW4nmJTKPVntehmZSmBFJ0PlqAbSmCNmZkLZX8-vdYNNCIQ8cd19fZ7yc=9A1C10DD"
+cirrus_url="https://x-token-auth:${cirrus_token}@bitbucket.org/opengosim/cirrus_${cirrus_version}.git"
 
 out="$PWD/result"
 
@@ -23,7 +18,7 @@ rm -rf $out
 # --------------------------------------
 mkdir $out
 git clone --depth=1 --branch="${petsc_rev}" -- "${petsc_url}" $out/.git-petsc
-git clone --depth=1 --branch="sv${pflotran_ogs_rev}" -- "${pflotran_ogs_url}" $out/.git-pflotran_ogs
+git clone --depth=1 --branch="release" -- "${cirrus_url}" $out/.git-cirrus
 
 # --------------------------------------
 # Prepare environment
@@ -66,9 +61,9 @@ make check
 make install
 
 # --------------------------------------
-# Build PFLOTRAN-OGS
+# Build Cirrus
 # --------------------------------------
-cd $out/.git-pflotran_ogs/src/pflotran
+cd $out/.git-cirrus/src/pflotran
 
 make UPDATE_PROVENANCE=0 pflotran
 make check
