@@ -1,0 +1,42 @@
+#!/usr/bin/env bash
+set -ex
+
+cd $(dirname $0)
+
+# --------------------------------------
+# Prepare environment
+# --------------------------------------
+
+# When running interactively, enter bash on error
+if tty -s
+then
+    echo "INFO: Enabling bash shell on error"
+    function on_err {
+        echo "!!! ERROR DURING BUILD !!!" >&2
+        bash
+    }
+    trap on_err ERR
+fi
+
+source ./config
+tmp="$PWD/result"
+key="$(readlink -f $(basename $0))/git-cirrus-deploy-key"
+out="${STORE}/${CIRRUS_VERSION}-${CIRRUS_BUILD}+$(printf %.8s ${CIRRUS_COMMIT})"
+
+# --------------------------------------
+# Clone Cirrus
+# --------------------------------------
+mkdir -p $tmp
+git clone -c core.sshCommand="ssh -i ${key}" ${CIRRUS_URL} $tmp/git-cirrus
+
+# --------------------------------------
+# Build Cirrus
+# --------------------------------------
+cd $tmp/git-cirrus/src/cirrus
+
+export PETSC_DIR="${STORE}/petsc-${PETSC_VERSION}-${PETSC_BUILD}+$(printf %.8s ${PETSC_COMMIT})"
+export PETSC_ARCH=
+
+make UPDATE_PROVENANCE=0 cirrus
+make check
+install -D cirrus $out/bin/cirrus

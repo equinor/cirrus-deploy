@@ -1,0 +1,11 @@
+STORE=/prog/pflotran/deployments/.builds
+
+PETSC_VERSION=3.19.1
+PETSC_BUILD=1  # Remember to increment this when upgrading!
+PETSC_COMMIT=a093114c2e7b4ba1f47e6ac8a72c57724150f16d
+PETSC_URL=https://github.com/petsc/petsc/archive/${PETSC_COMMIT}.zip
+
+CIRRUS_VERSION=1.9.0
+CIRRUS_BUILD=1  # Remember to increment this when upgrading!
+CIRRUS_URL=git@github.com:equinor/cirrus.git
+CIRRUS_COMMIT=9b0bc4e62ad95b316b36c032b86852efd2574a41
