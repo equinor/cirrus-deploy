@@ -7,6 +7,22 @@ cd $(dirname $0)
 # Prepare environment
 # --------------------------------------
 
+source ./config
+tmp="$PWD/result"
+out="${PETSC_OUT}"
+
+if [ -d "$out" ]; then
+    set +x
+    echo "PETSC target directory already exists:" >&2
+    echo "  ${out}"
+    echo "Maybe it's already installed?" >&2
+    echo "Either:" >&2
+    echo "  1. Increment PETSC_BUILD in ./config" >&2
+    echo "  2. rm -rf ${out}" >&2
+
+    exit 1
+fi
+
 # When running interactively, enter bash on error
 if tty -s
 then
@@ -16,21 +32,6 @@ then
         bash
     }
     trap on_err ERR
-fi
-
-source ./config
-tmp="$PWD/result"
-out="${STORE}/petsc-${PETSC_VERSION}-${PETSC_BUILD}+$(printf %.8s ${PETSC_COMMIT})"
-
-if [ -d "$out"]; then
-    echo "PETSC target directory already exists:" >&2
-    echo "  ${out}"
-    echo "Maybe it's already installed?" >&2
-    echo "Either:" >&2
-    echo "  1. Increment PETSC_BUILD in ./config" >&2
-    echo "  2. rm -rf ${out}" >&2
-
-    exit 1
 fi
 
 # --------------------------------------

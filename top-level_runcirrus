@@ -1,0 +1,9 @@
+#!/bin/sh
+# This is the top-level "runcirrus" wrapper script.
+# The original source is located in the following repository:
+#   https://github.com/equinor/cirrus-deploy
+# To change this file, first edit and commit the file in the repository, then copy it to each location
+set -e
+
+path=$(readlink -f "/prog/pflotran/deployments/${CIRRUS_VERSION:-latest}")
+exec "${path}/bin/runcirrus" "$@"

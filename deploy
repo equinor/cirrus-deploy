@@ -1,0 +1,68 @@
+#!/usr/bin/env bash
+set -e
+
+cd $(dirname $0)
+
+# --------------------------------------
+# Prepare environment
+# --------------------------------------
+
+source ./config
+tmp="$PWD/result"
+current_area_short=$(hostname | grep -oE "^[^-]+")
+
+# --------------------------------------
+# Sync with all areas
+# --------------------------------------
+areas=(
+  be-grid01.be.statoil.no
+  st-grid01.st.statoil.no
+  s268-lckm.s268.oc.equinor.com  # master node of CCS CycleCloud
+  tr-grid01.tr.statoil.no
+  hou-grid01.hou.statoil.no
+  # rio-grid01.rio.statoil.no  # I have no home directory ~Zohar
+  stjohn-grid01.stjohn.statoil.no
+)
+
+paths=(
+  "${PETSC_OUT}"
+  "${CIRRUS_OUT}"
+  "${ENV_OUT}"
+)
+
+links=(
+  "^[^+]+"  # Everything until + (ie, until git commit)
+  "^[^-]+"  # Everything until - (ie, until build number)
+  "^[0-9]+\.[0-9]+"  # Major.Minor
+)
+
+for area in "${areas[@]}"
+do
+  echo "# --------------------------------------"
+  area_short=$(echo "$area" | grep -oE "^[^-]+")
+
+  if [[ "x$area_short" = "x$current_area_short" ]];
+  then
+    echo "Skipping syncing to $area"
+  else
+    echo "Deploying to: $area"
+    for path in "${paths[@]}"
+    do
+      echo "Syncing $path"
+      rsync -ar --info=progress2 "$path/" "${area}:${path}/"
+    done
+  fi
+
+  echo "Ensuring symlinks"
+  srclink=$(basename "${ENV_OUT}")
+  for link in "${links[@]}"
+  do
+    dstlink=$(echo $srclink | grep -oE "$link")
+    ssh $area -- ln -sfn "$srclink" "$INSTALL/$dstlink"
+    srclink=$dstlink
+  done
+  ssh $area -- ln -sfn "$srclink" "$INSTALL/latest"
+
+  echo "Syncing runcirrus script"
+  rsync "./top-level_runcirrus" "$area:/prog/pflotran/cirrus"
+done

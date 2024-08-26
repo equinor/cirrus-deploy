@@ -1,0 +1,5 @@
+#!/bin/sh
+set -e
+
+self=$(realpath $(dirname $0))
+exec "${self}/mpirun" "${self}/cirrus" "$@"
