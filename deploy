@@ -65,4 +65,5 @@ do
 
   echo "Syncing runcirrus script"
   rsync "./top-level_runcirrus" "$area:/prog/pflotran/cirrus"
+  ssh $area -- ln -sfn "cirrus" "/prog/pflotran/mpi-cirrus"
 done

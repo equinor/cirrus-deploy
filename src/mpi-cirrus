@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python3.8
 from __future__ import annotations
 import os, os.path
 import argparse
@@ -19,7 +19,7 @@ arg_machinefile=
 if [ -n "$LSB_MCPU_HOSTS" ]; then  # LSF
     arg_num_mpi=$(wc -l < $LSB_DJOB_RANKFILE)
     arg_machinefile="-machinefile $LSB_DJOB_RANKFILE"
-elif [ -n "$PBS_NODEFILE" ]  # PBS
+elif [ -n "$PBS_NODEFILE" ]; then  # PBS
     arg_num_mpi=$(wc -l < $PBS_NODEFILE)
     arg_machinefile="-machinefile $PBS_NODEFILE"
 fi
@@ -89,7 +89,7 @@ def main() -> None:
     )
 
     resource_params = [
-        "select[x86_64linux]",
+        "select[x86_64Linux]",
         f"span[ptile={num_mpi_per_node}]",
         "same[type:model]",
     ]
@@ -108,7 +108,7 @@ def main() -> None:
             "-o",
             f"{input_file.parent}/{input_file.stem}_bsub.LOG",
             "-J",
-            f"Cirrus[{input_file.name}]",
+            f"Cirrus_{input_file.name}",
             "-R",
             " ".join(resource_params),
             "bash",
