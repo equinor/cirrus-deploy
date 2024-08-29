@@ -7,10 +7,10 @@ PETSC_COMMIT=a093114c2e7b4ba1f47e6ac8a72c57724150f16d
 PETSC_URL=https://github.com/petsc/petsc/archive/${PETSC_COMMIT}.zip
 PETSC_OUT=${STORE}/petsc-${PETSC_VERSION}-${PETSC_BUILD}+$(printf %.8s ${PETSC_COMMIT})
 
-CIRRUS_VERSION=1.9.0
+CIRRUS_VERSION=1.9.1
 CIRRUS_BUILD=1  # Remember to increment this when upgrading!
 CIRRUS_URL=git@github.com:equinor/cirrus.git
-CIRRUS_COMMIT=9b0bc4e62ad95b316b36c032b86852efd2574a41
+CIRRUS_COMMIT=429bc6f9104e66bb7eebcb154d1e32f277bc1146
 CIRRUS_OUT=${STORE}/${CIRRUS_VERSION}-${CIRRUS_BUILD}+$(printf %.8s ${CIRRUS_COMMIT})
 
 ENV_BUILD=1  # Remember to increment this when upgrading!

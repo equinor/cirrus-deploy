@@ -41,4 +41,4 @@ fi
 mkdir -p "${ENV_OUT}/bin"
 ln -s "${PETSC_OUT}/bin/mpirun" "${ENV_OUT}/bin/mpirun"
 ln -s "${CIRRUS_OUT}/bin/cirrus" "${ENV_OUT}/bin/cirrus"
-cp src/runcirrus "${ENV_OUT}/bin/runcirrus"
+cp src/mpi-cirrus "${ENV_OUT}/bin/mpi-cirrus"
