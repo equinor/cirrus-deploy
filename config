@@ -13,5 +13,5 @@ CIRRUS_URL=git@github.com:equinor/cirrus.git
 CIRRUS_COMMIT=429bc6f9104e66bb7eebcb154d1e32f277bc1146
 CIRRUS_OUT=${STORE}/${CIRRUS_VERSION}-${CIRRUS_BUILD}+$(printf %.8s ${CIRRUS_COMMIT})
 
-ENV_BUILD=1  # Remember to increment this when upgrading!
-ENV_OUT=${INSTALL}/${CIRRUS_VERSION}-${CIRRUS_BUILD}+$(printf %.8s ${CIRRUS_COMMIT})
+ENV_BUILD=2  # Remember to increment this when upgrading!
+ENV_OUT=${INSTALL}/${CIRRUS_VERSION}-${ENV_BUILD}+$(printf %.8s ${CIRRUS_COMMIT})

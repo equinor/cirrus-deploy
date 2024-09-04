@@ -31,7 +31,7 @@ then
 fi
 
 # -display-map is just for debugging MPI layout
-exec mpirun -display-map $arg_mpi_transport $arg_machinefile -np $arg_num_mpi cirrus -cirrusin "{input_file}"
+exec @MPIRUN@ -display-map $arg_mpi_transport $arg_machinefile -np $arg_num_mpi cirrus -cirrusin "{input_file}"
 """
 
 
