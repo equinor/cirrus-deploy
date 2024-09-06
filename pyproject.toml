@@ -1,0 +1,20 @@
+[build-system]
+requires = ["setuptools", "setuptools-scm"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "cirrus-deploy"
+authors = [
+  {name = "Zohar Malamant", email = "zom@equinor.com"},
+]
+description = "Deployment scripts for Cirrus"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+  "semver",
+  "typer-slim",
+]
+version = "0.1.0"
+
+[project.scripts]
+deploy = "deploy.__main__:main"
