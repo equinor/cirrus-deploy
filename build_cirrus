@@ -50,5 +50,5 @@ export PETSC_DIR="${STORE}/petsc-${PETSC_VERSION}-${PETSC_BUILD}+$(printf %.8s $
 export PETSC_ARCH=
 
 make UPDATE_PROVENANCE=0 cirrus
-make check
+make test
 install -D cirrus $out/bin/cirrus
