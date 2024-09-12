@@ -15,11 +15,11 @@ out="${ENV_OUT}"
 if [ -d "$out" ]; then
     set +x
     echo "Environment target directory already exists:" >&2
-    echo "  ${out}"
+    echo "  $out"
     echo "Maybe it's alreayd installed?" >&2
     echo "Either:" >&2
     echo "  1. Increment ENV_BUILD in ./config" >&2
-    echo "  2. rm -rf ${out}" >&2
+    echo "  2. rm -rf $out" >&2
 
     exit 1
 fi
@@ -38,7 +38,22 @@ fi
 # --------------------------------------
 # Create environment
 # --------------------------------------
-mkdir -p "${ENV_OUT}/bin"
-ln -s "${CIRRUS_OUT}/bin/cirrus" "${ENV_OUT}/bin/cirrus"
-sed s,@MPIRUN@,${PETSC_OUT}/bin/mpirun, src/mpi-cirrus > "${ENV_OUT}/bin/mpi-cirrus"
-chmod +x "${ENV_OUT}/bin/mpi-cirrus"
+SCRIPT=$(cat <<EOF
+import os
+import sys
+import contextlib
+
+out = sys.argv[1]
+paths = sys.argv[2:]
+
+for path in paths:
+  for srcdir, subdirs, files in os.walk(path):
+    dstdir = os.path.join(out, srcdir[len(path)+1:])
+    with contextlib.suppress(FileExistsError):
+      os.mkdir(dstdir)
+    for f in files:
+      with contextlib.suppress(FileExistsError):
+        os.symlink(os.path.join(srcdir, f), os.path.join(dstdir, f))
+EOF
+)
+python3 -c "$SCRIPT" "$out" "${PETSC_OUT}" "${CIRRUS_OUT}"
