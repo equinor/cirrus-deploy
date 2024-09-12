@@ -39,12 +39,12 @@ fi
 # Clone Cirrus
 # --------------------------------------
 mkdir -p $tmp
-git clone -c core.sshCommand="ssh -i ${key}" ${CIRRUS_URL} $tmp/git-cirrus
+git clone ${CIRRUS_URL} $tmp/git-cirrus-${CIRRUS_COMMIT}
 
 # --------------------------------------
 # Build Cirrus
 # --------------------------------------
-cd $tmp/git-cirrus/src/cirrus
+cd $tmp/git-cirrus/src/cirrus-${CIRRUS_COMMIT}
 
 export PETSC_DIR="${STORE}/petsc-${PETSC_VERSION}-${PETSC_BUILD}+$(printf %.8s ${PETSC_COMMIT})"
 export PETSC_ARCH=
