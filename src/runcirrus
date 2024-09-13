@@ -70,7 +70,7 @@ class Arguments:
     qsub_args: str | None = None
 
 
-def parse_args() -> Arguments:
+def parse_args(argv: list[str] | None = None) -> Arguments:
     ap = argparse.ArgumentParser(
         description="Wrapper for running Cirrus with MPI in Equinor"
     )
@@ -99,7 +99,7 @@ def parse_args() -> Arguments:
     ap.add_argument(
         "-v",
         "--cirrus-version",
-        default=os.environ.get("CIRRUS_VERSION", "stable"),
+        default=os.environ.get("CIRRUS_VERSION", "latest"),
         help="Version of Cirrus to use",
     )
     ap.add_argument(
@@ -124,7 +124,7 @@ def parse_args() -> Arguments:
         action="store_true",
         help="Output job script and exit",
     )
-    return Arguments(**vars(ap.parse_args()))
+    return Arguments(**vars(ap.parse_args(argv[1:])))
 
 
 def run(program: str, *args: str) -> NoReturn:
@@ -195,7 +195,24 @@ def run_qsub(args: Arguments) -> NoReturn:
 
 
 def main() -> None:
-    args = parse_args()
+    argv = []
+    for arg in sys.argv:
+        if arg == "-nn":
+            print(
+                "Warning: '-nn' argument has been deprecated in favour of '-N'",
+                file=sys.stderr,
+            )
+            argv.append("-N")
+        elif arg == "-nm":
+            print(
+                "Warning: '-nm' argument has been deprecated in favour of '-M'",
+                file=sys.stderr,
+            )
+            argv.append("-M")
+        else:
+            argv.append(arg)
+
+    args = parse_args(argv)
     input_file = Path(args.input).resolve()
     if not input_file.exists():
         sys.exit(f"Cirrus input file '{input_file}' does not exit!")
