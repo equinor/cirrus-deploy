@@ -31,7 +31,7 @@ then
     arg_mpi_transport="-mca btl vader,self,tcp -mca pml ^ucx"
 fi
 
-({root}/bin/mpirun $arg_mpi_transport $arg_machinefile -np {num_tasks} {mpi_args} {root}/bin/{progname} {cirrus_args} -{progname}in "{input_file}" | tee "{case}.LOG") 3>&1 1>&2 2>&3 | tee "{case}.ERR"
+({root}/bin/mpirun $arg_mpi_transport $arg_machinefile {num_tasks} {mpi_args} {root}/bin/{progname} {cirrus_args} -{progname}in "{input_file}" | tee "{case}.LOG") 3>&1 1>&2 2>&3 | tee "{case}.ERR"
 """
 
 
@@ -242,6 +242,12 @@ def main() -> None:
     if args.cirrus_version and args.cirrus_version.split(".") < ["1", "9"]:
         progname = "pflotran"
 
+    num_tasks = None
+    if args.num_tasks:
+        num_tasks = args.num_tasks
+    elif args.num_nodes:
+        num_tasks = args.num_nodes * args.num_tasks_per_node
+
     script = SCRIPT.format(
         root=rootdir,
         workdir=input_file.parent,
@@ -250,7 +256,7 @@ def main() -> None:
         progname=progname,
         mpi_args=args.mpi_args or "",
         cirrus_args=args.cirrus_args or "",
-        num_tasks=args.num_tasks or args.num_nodes * args.num_tasks_per_node,
+        num_tasks="-np {num_tasks}" if num_tasks is not None else "",
     )
 
     if args.print_job_script:

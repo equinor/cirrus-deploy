@@ -20,7 +20,7 @@ areas=(
   s268-lckm.s268.oc.equinor.com  # master node of CCS CycleCloud
   tr-grid01.tr.statoil.no
   hou-grid01.hou.statoil.no
-  # rio-grid01.rio.statoil.no  # I have no home directory ~Zohar
+  rio-grid01.rio.statoil.no
   stjohn-grid01.stjohn.statoil.no
 )
 
@@ -62,8 +62,4 @@ do
     srclink=$dstlink
   done
   ssh $area -- ln -sfn "$srclink" "$INSTALL/latest"
-
-  echo "Syncing runcirrus script"
-  rsync "./top-level_runcirrus" "$area:/prog/pflotran/cirrus"
-  ssh $area -- ln -sfn "cirrus" "/prog/pflotran/mpi-cirrus"
 done
