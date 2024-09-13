@@ -38,7 +38,7 @@ fi
 # --------------------------------------
 # Create environment
 # --------------------------------------
-SCRIPT=$(cat <<EOF
+SCRIPT=$(cat <<-EOF
 import os
 import sys
 import contextlib
@@ -47,6 +47,7 @@ out = sys.argv[1]
 paths = sys.argv[2:]
 
 for path in paths:
+  print(f"Adding {path}")
   for srcdir, subdirs, files in os.walk(path):
     dstdir = os.path.join(out, srcdir[len(path)+1:])
     with contextlib.suppress(FileExistsError):

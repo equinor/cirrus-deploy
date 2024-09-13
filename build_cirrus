@@ -11,6 +11,7 @@ source ./config
 tmp="$PWD/result"
 key="$(readlink -f $(basename $0))/git-cirrus-deploy-key"
 out="${CIRRUS_OUT}"
+src="$tmp/git-cirrus-${CIRRUS_COMMIT}"
 
 if [ -d "$out" ]; then
     set +x
@@ -38,13 +39,17 @@ fi
 # --------------------------------------
 # Clone Cirrus
 # --------------------------------------
-mkdir -p $tmp
-git clone ${CIRRUS_URL} $tmp/git-cirrus-${CIRRUS_COMMIT}
+if ! [[ -d "$src" ]]
+then
+    git clone "${CIRRUS_URL}" "$src"
+fi
 
 # --------------------------------------
 # Build Cirrus
 # --------------------------------------
-cd $tmp/git-cirrus/src/cirrus-${CIRRUS_COMMIT}
+cd $src/src/cirrus
+git reset --hard
+git clean -xdf
 
 export PETSC_DIR="${STORE}/petsc-${PETSC_VERSION}-${PETSC_BUILD}+$(printf %.8s ${PETSC_COMMIT})"
 export PETSC_ARCH=
