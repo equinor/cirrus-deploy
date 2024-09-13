@@ -54,7 +54,7 @@ for path in paths:
       os.mkdir(dstdir)
     for f in files:
       with contextlib.suppress(FileExistsError):
-        os.link(os.path.join(srcdir, f), os.path.join(dstdir, f))
+        os.symlink(os.path.join(srcdir, f), os.path.join(dstdir, f))
 EOF
 )
 python3 -c "$SCRIPT" "$out" "${PETSC_OUT}" "${CIRRUS_OUT}"

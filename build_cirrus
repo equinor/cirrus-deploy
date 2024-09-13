@@ -41,6 +41,9 @@ fi
 if ! [[ -d "$src" ]]
 then
     git clone "${CIRRUS_URL}" "$src"
+    pushd "$src"
+    git checkout "${CIRRUS_COMMIT}"
+    popd
 fi
 
 if ! [[ -f "$tmp/six-*-.whl" ]]
@@ -51,7 +54,7 @@ fi
 # --------------------------------------
 # Build Cirrus
 # --------------------------------------
-cd $src/src/cirrus
+cd $src/src/pflotran
 git reset --hard
 git clean -xdf
 
@@ -59,6 +62,6 @@ export PETSC_DIR="$PETSC_OUT"
 export PETSC_ARCH=
 export PYTHONPATH="$tmp/six-*-.whl"
 
-make cirrus
+make pflotran
 make test
-install -D cirrus $out/bin/cirrus
+install -D pflotran $out/bin/pflotran
