@@ -66,6 +66,7 @@ class Arguments:
 
     bsub_args: str | None = None
     qsub_args: str | None = None
+    exclusive: bool | None = None
 
 
 def parse_args(argv: list[str] | None = None) -> Arguments:
@@ -117,6 +118,7 @@ def parse_args(argv: list[str] | None = None) -> Arguments:
         ap.add_argument("--bsub-args", help="Additional arguments for bsub command")
     if HAVE_QSUB:
         ap.add_argument("--qsub-args", help="Additional arguments for qsub command")
+        ap.add_argument("-e", "--exclusive", help="Exclusive node usage [default: shared]")
     ap.add_argument(
         "--print-job-script",
         action="store_true",
@@ -170,25 +172,33 @@ def run_bsub(script: str, args: Arguments, input_file: Path) -> NoReturn:
     )
 
 
-def run_qsub(args: Arguments) -> NoReturn:
-    os.execvp(
-        "bsub",
-        [
-            "bsub",
-            "-L",
-            "/bin/csh",
-            *(["-q", args.queue] if args.queue else []),
-            "-n",
-            str(num_cpu),
-            "-o",
-            f"{input_file.parent}/{input_file.stem}_bsub.LOG",
-            "-J",
-            f"Cirrus_{input_file.name}",
-            "-R",
-            " ".join(resource_params),
-            "bash",
-            script,
-        ],
+def run_qsub(script: str, args: Arguments, input_file: Path) -> NoReturn:
+    place = "scatter:excl" if args.exclusive else "scatter:shared"
+
+    user_args = args.qsub_args or []
+
+    script_path = input_file.parent / f"{input_file.stem}.run"
+    script_path.write_text(script, encoding="utf-8")
+
+    run(
+        "qsub",
+        "-q",
+        args.queue,
+        "-l",
+        f"select={args.num_nodes}:ncpus={args.num_tasks_per_node}:mpiprocs={args.num_tasks_per_node}",
+        "-l",
+        f"place={place}",
+        "-j",
+        "oe",
+        "-o",
+        f"{input_file.parent}/{input_file.stem}_qsub.LOG",
+        "-N",
+        f"Cirrus_{input_file.name}",
+        *user_args,
+        "--",
+        "/usr/bin/bash",
+        "-c",
+        script,
     )
 
 
@@ -229,6 +239,8 @@ def main() -> None:
         sys.exit(
             "When queue is non-local, you must set -n/--num-tasks or -N/--num-nodes & -M/--num-tasks-per-node"
         )
+    if args.num_tasks and args.queue != "local" and HAVE_QSUB:
+        sys.exit("-n option is not supported on OpenPBS")
 
     ensure_local_on_hpc(args)
 
@@ -256,7 +268,7 @@ def main() -> None:
         progname=progname,
         mpi_args=args.mpi_args or "",
         cirrus_args=args.cirrus_args or "",
-        num_tasks="-np {num_tasks}" if num_tasks is not None else "",
+        num_tasks=f"-np {num_tasks}" if num_tasks is not None else "",
     )
 
     if args.print_job_script:
@@ -266,7 +278,7 @@ def main() -> None:
     elif HAVE_BSUB:
         run_bsub(script, args, input_file)
     elif HAVE_QSUB:
-        run_qsub(script, args)
+        run_qsub(script, args, input_file)
     else:
         sys.exit("No supported job scheduler detected on this machine")
 
