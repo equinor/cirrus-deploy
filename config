@@ -1,7 +1,7 @@
-BASE=$HOME/cirrus
-#BASE=/prog/pflotran
-INSTALL=$BASE/deployments
-STORE=$BASE/deployments/.builds
+#BASE=$HOME/cirrus
+BASE=/prog/pflotran
+INSTALL=$BASE/versions
+STORE=$BASE/versions/.builds
 
 PETSC_VERSION=3.19.1
 PETSC_BUILD=1  # Remember to increment this when upgrading!
@@ -17,3 +17,5 @@ CIRRUS_OUT=${STORE}/${CIRRUS_VERSION}-${CIRRUS_BUILD}+$(printf %.8s ${CIRRUS_COM
 
 ENV_BUILD=2  # Remember to increment this when upgrading!
 ENV_OUT=${INSTALL}/${CIRRUS_VERSION}-${ENV_BUILD}+$(printf %.8s ${CIRRUS_COMMIT})
+
+SYMLINK_STABLE=1.9.1

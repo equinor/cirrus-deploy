@@ -9,7 +9,6 @@ cd $(dirname $0)
 
 source ./config
 tmp="$PWD/result"
-key="$(readlink -f $(basename $0))/git-cirrus-deploy-key"
 out="${CIRRUS_OUT}"
 src="$tmp/git-cirrus-${CIRRUS_COMMIT}"
 
@@ -44,6 +43,11 @@ then
     git clone "${CIRRUS_URL}" "$src"
 fi
 
+if ! [[ -f "$tmp/six-*-.whl" ]]
+then
+    python3 -m pip download -d "$tmp" six
+fi
+
 # --------------------------------------
 # Build Cirrus
 # --------------------------------------
@@ -51,9 +55,10 @@ cd $src/src/cirrus
 git reset --hard
 git clean -xdf
 
-export PETSC_DIR="${STORE}/petsc-${PETSC_VERSION}-${PETSC_BUILD}+$(printf %.8s ${PETSC_COMMIT})"
+export PETSC_DIR="$PETSC_OUT"
 export PETSC_ARCH=
+export PYTHONPATH="$tmp/six-*-.whl"
 
-make UPDATE_PROVENANCE=0 cirrus
+make cirrus
 make test
 install -D cirrus $out/bin/cirrus
