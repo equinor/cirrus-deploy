@@ -15,8 +15,6 @@ SCRIPT = """\
 set -e
 
 cd "{workdir}"
-export PATH="{root}/bin:$PATH"
-export LD_LIBRARY_PATH="{root}/lib${{LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}}"
 
 arg_mpi_transport=
 arg_machinefile=
@@ -33,7 +31,7 @@ then
     arg_mpi_transport="-mca btl vader,self,tcp -mca pml ^ucx"
 fi
 
-($(readlink "{root}/bin/mpirun") $arg_mpi_transport $arg_machinefile -np {num_tasks} {mpi_args} {progname} {cirrus_args} -{progname}in "{input_file}" | tee "{case}.LOG") 3>&1 1>&2 2>&3 | tee "{case}.ERR"
+({root}/bin/mpirun $arg_mpi_transport $arg_machinefile -np {num_tasks} {mpi_args} {root}/bin/{progname} {cirrus_args} -{progname}in "{input_file}" | tee "{case}.LOG") 3>&1 1>&2 2>&3 | tee "{case}.ERR"
 """
 
 
