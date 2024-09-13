@@ -15,8 +15,8 @@ SCRIPT = """\
 set -e
 
 cd "{workdir}"
-PATH="{bin}:$PATH"
-export PATH
+export PATH="{root}/bin:$PATH"
+export LD_LIBRARY_PATH="{root}/lib${{LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}}"
 
 arg_mpi_transport=
 arg_machinefile=
@@ -33,7 +33,7 @@ then
     arg_mpi_transport="-mca btl vader,self,tcp -mca pml ^ucx"
 fi
 
-(mpirun $arg_mpi_transport $arg_machinefile {mpi_args} {progname} {cirrus_args} -{progname}in "{input_file}" | tee "{case}.LOG") 3>&1 1>&2 2>&3 | tee "{case}.ERR"
+($(readlink "{root}/bin/mpirun") $arg_mpi_transport $arg_machinefile -np {num_tasks} {mpi_args} {progname} {cirrus_args} -{progname}in "{input_file}" | tee "{case}.LOG") 3>&1 1>&2 2>&3 | tee "{case}.ERR"
 """
 
 
@@ -234,8 +234,8 @@ def main() -> None:
 
     ensure_local_on_hpc(args)
 
-    bindir = (Path(args.cirrus_versions_path) / args.cirrus_version).resolve()
-    if not bindir.exists():
+    rootdir = (Path(args.cirrus_versions_path) / args.cirrus_version).resolve()
+    if not rootdir.exists():
         sys.exit(
             f"Cirrus version '{args.cirrus_version}' is not installed in {args.cirrus_versions_path}"
         )
@@ -245,13 +245,14 @@ def main() -> None:
         progname = "pflotran"
 
     script = SCRIPT.format(
-        bin=bindir / "bin",
+        root=rootdir,
         workdir=input_file.parent,
         input_file=input_file,
         case=input_file.stem,
         progname=progname,
         mpi_args=args.mpi_args or "",
         cirrus_args=args.cirrus_args or "",
+        num_tasks=args.num_tasks or args.num_nodes * args.num_tasks_per_node,
     )
 
     if args.print_job_script:
