@@ -18,7 +18,7 @@ areas=(
   s268-lckm.s268.oc.equinor.com  # master node of CCS CycleCloud
   tr-grid01.tr.statoil.no
   hou-grid01.hou.statoil.no
-  # rio-grid01.rio.statoil.no  # I have no home directory ~Zohar
+  rio-grid01.rio.statoil.no
   stjohn-grid01.stjohn.statoil.no
 )
 
@@ -27,5 +27,5 @@ do
   echo "# --------------------------------------"
   area_short=$(echo "$area" | grep -oE "^[^-]+")
   echo "Deploying to: $area"
-  rsync "src/runcirrus" "$area:/prog/pflotran/bin/_runcirrus"
+  rsync -a "src/runcirrus" "$area:/prog/pflotran/bin/_runcirrus"
 done
