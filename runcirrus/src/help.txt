@@ -1,0 +1,3 @@
+Run Cirrus locally or on the cluster.
+
+The source code for 'runcirrus' is located at https://github.com/equinor/cirrus-deploy
