@@ -14,7 +14,7 @@ SCRIPT = """\
 #!/usr/bin/bash
 set -e
 
-cd "{workdir}"
+cd "{outdir}"
 
 arg_mpi_transport=
 arg_machinefile=
@@ -31,7 +31,7 @@ then
     arg_mpi_transport="-mca btl vader,self,tcp -mca pml ^ucx"
 fi
 
-({root}/bin/mpirun $arg_mpi_transport $arg_machinefile {num_tasks} {mpi_args} {root}/bin/{progname} {cirrus_args} -{progname}in "{input_file}" | tee "{case}.LOG") 3>&1 1>&2 2>&3 | tee "{case}.ERR"
+({root}/bin/mpirun $arg_mpi_transport $arg_machinefile {num_tasks} {mpi_args} {telemetry} {root}/bin/{progname} {cirrus_args} -{progname}in "{input_file}" -output_prefix "{outdir}/{case}" | tee "{outdir}/{case}.LOG") 3>&1 1>&2 2>&3 | tee "{outdir}/{case}.ERR"
 """
 
 
@@ -61,9 +61,12 @@ class Arguments:
     cirrus_version: str
     cirrus_versions_path: str
     print_job_script: bool
+    print_versions: bool
     mpi_args: str
     cirrus_args: str
+    output_directory: str
 
+    telemetry: str | None = None
     bsub_args: str | None = None
     qsub_args: str | None = None
     exclusive: bool | None = None
@@ -102,6 +105,12 @@ def parse_args(argv: list[str] | None = None) -> Arguments:
         help="Version of Cirrus to use",
     )
     ap.add_argument(
+        "-o",
+        "--output-directory",
+        default=os.getcwd(),
+        help="Directory to store the output to"
+    )
+    ap.add_argument(
         "--cirrus-versions-path",
         default=os.environ.get("CIRRUS_VERSIONS_PATH", "/prog/pflotran/versions"),
         help="Path to directory where Cirrus versions are located",
@@ -114,6 +123,12 @@ def parse_args(argv: list[str] | None = None) -> Arguments:
         "--mpi-args",
         help="Additional arguments for mpirun command",
     )
+    ap.add_argument(
+        "--telemetry",
+        type=str,
+        default="",
+        help="Program to run between mpirun and Cirrus",
+    )
     if HAVE_BSUB:
         ap.add_argument("--bsub-args", help="Additional arguments for bsub command")
     if HAVE_QSUB:
@@ -123,6 +138,11 @@ def parse_args(argv: list[str] | None = None) -> Arguments:
         "--print-job-script",
         action="store_true",
         help="Output job script and exit",
+    )
+    ap.add_argument(
+        "--print-versions",
+        action="store_true",
+        help="Output Cirrus versions and exit",
     )
     return Arguments(**vars(ap.parse_args(argv[1:])))
 
@@ -269,6 +289,8 @@ def main() -> None:
         mpi_args=args.mpi_args or "",
         cirrus_args=args.cirrus_args or "",
         num_tasks=f"-np {num_tasks}" if num_tasks is not None else "",
+        outdir=Path(args.output_directory).resolve(),
+        telemetry=args.telemetry,
     )
 
     if args.print_job_script:
