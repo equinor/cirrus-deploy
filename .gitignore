@@ -1,3 +1,12 @@
+# Deployment side-effects
+tmp/
 result
 result-*
+
+# Python
+.venv/
+venv/
+__pycache__/
+*.pyo
+*.pyc
 *.egg-info

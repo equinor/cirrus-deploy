@@ -1,7 +1,7 @@
 #BASE=$HOME/cirrus
 BASE=/prog/pflotran
 INSTALL=$BASE/versions
-STORE=$BASE/versions/.builds
+STORE=$BASE/versions/.store
 
 PETSC_VERSION=3.19.1
 PETSC_BUILD=1  # Remember to increment this when upgrading!
