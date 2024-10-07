@@ -39,7 +39,7 @@ class PathConfig(BaseModel):
 class Config(BaseModel):
     paths: PathConfig
     builds: list[BuildConfig]
-
+    links: dict[str, str]
 
 def load_config(path: Path | None = None) -> Config:
     with open(path or Path.cwd() / "config.yaml") as f:

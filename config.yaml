@@ -16,7 +16,10 @@ builds:
     git_ref: c802022b034f868a5c033808c855a96c1233ff0d
     depends: [ petsc ]
 
-symlinks:
+links:
+  '1.9.2': '1.9.2-1'
+  '1.8.12': '1.8.12-1'
   '1.9': '1.9.2'
-  'stable': '1.9.2-2'
-  'latest': '1.9.2'
+  '1.8': '1.8.12'
+  'stable': '1.9'
+  'latest': '^'

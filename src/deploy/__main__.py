@@ -11,6 +11,7 @@ from pathlib import Path
 
 from deploy.build import Build
 from deploy.config import load_config, BuildConfig, Config
+from deploy.links import make_links
 
 AREAS = [
     ("Bergen", "be-grid01.be.statoil.no"),
@@ -82,8 +83,16 @@ def install(system: bool) -> None:
 
 
 @cli.command(help="Generate symlinks from ./symlinks.json")
-def links() -> None:
-    pass
+@click.option(
+    "--system",
+    "-s",
+    is_flag=True,
+    help="Install to /prog/pflotran instead of ~/cirrus",
+    default=False,
+)
+def links(system: bool) -> None:
+    config = load_config()
+    make_links(config, system=system)
 
 
 @cli.command(help="Run 'runcirrus' using the local installation")
