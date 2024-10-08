@@ -6,6 +6,8 @@ from typing import Literal
 import yaml
 from pydantic import BaseModel, RootModel, Field
 
+from deploy.config import Config, AreaConfig
+
 COLLECTOR = b"""\
 #!/usr/bin/env python3
 import os
@@ -71,16 +73,30 @@ class Collect(BaseModel):
     store: list[str] | None = None
 
 
-async def collect(hostname: str) -> None:
-    proc = await asyncio.create_subprocess_exec("ssh", "-T", hostname, "/usr/bin/env", "python3", stdin=asyncio.subprocess.PIPE, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE)
+async def collect(area: AreaConfig) -> Collect:
+    proc = await asyncio.create_subprocess_exec("ssh", "-T", area.host, "/usr/bin/env", "python3", stdin=asyncio.subprocess.PIPE, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE)
     stdout, stderr = await proc.communicate(COLLECTOR)
 
-    os.write(1, stdout)
+    print(f"Finished area {area.name}")
 
-    print(yaml.safe_load(stdout))
-
-    print(Collect.model_validate(yaml.safe_load(stdout)))
+    return Collect.model_validate(yaml.safe_load(stdout))
 
 
-if __name__ == "__main__":
-    asyncio.run(collect("be-grid01.be.statoil.no"))
+async def _check(config: Config) -> None:
+    tasks: list[asyncio.Task] = []
+
+    for area in config.areas:
+        task = asyncio.create_task(collect(area))
+        tasks.append(task)
+
+    for area, info in zip(config.areas, await asyncio.gather(*tasks, return_exceptions=True)):
+        print(f"--- {area.name} ---")
+        for d in info.versions:
+            if isinstance(d, VersionsDirType):
+                print(f"  # {d.name}")
+            elif isinstance(d, VersionsLinkType):
+                print(f"  - {d.name} -> {d.target}")
+
+
+def do_check(config: Config) -> None:
+    asyncio.run(_check(config))

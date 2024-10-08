@@ -12,29 +12,7 @@ from pathlib import Path
 from deploy.build import Build
 from deploy.config import load_config, BuildConfig, Config
 from deploy.links import make_links
-
-AREAS = [
-    ("Bergen", "be-grid01.be.statoil.no"),
-    ("Stavanger", "st-grid01.st.statoil.no"),
-    ("Trondheim", "tr-grid01.tr.statoil.no"),
-    ("S268 (Azure)", "s268-lckm.s268.oc.equinor.com"),  # master node of CCSDD cluster
-    ("Houston, USA", "hou-grid01.hou.statoil.no"),
-    ("Rio, Brazil", "rio-grid01.rio.statoil.no"),
-    ("St. John, Canada", "stjohn-grid01.stjohn.statoil.no"),
-]
-
-
-def hash(build: BuildConfig, *other_hash: str) -> str:
-    h = hashlib.sha1(usedforsecurity=False)
-
-    h.update(build.model_dump_json().encode("utf-8"))
-    with open(Path(__file__).parent / f"scripts/build_{build.name}.sh", "rb") as f:
-        h.update(f.read())
-
-    for o in other_hash:
-        h.update(o.encode())
-
-    return h.hexdigest()
+from deploy.check import do_check
 
 
 @click.group()
@@ -44,7 +22,8 @@ def cli() -> None:
 
 @cli.command(help="Check locations")
 def check() -> None:
-    pass
+    config = load_config()
+    do_check(config)
 
 
 @cli.command(help="Build Cirrus and dependencies")

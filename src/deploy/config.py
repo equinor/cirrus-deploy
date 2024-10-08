@@ -36,10 +36,16 @@ class PathConfig(BaseModel):
         return value
 
 
+class AreaConfig(BaseModel):
+    name: str
+    host: str
+
+
 class Config(BaseModel):
     paths: PathConfig
     builds: list[BuildConfig]
     links: dict[str, str]
+    areas: list[AreaConfig]
 
 def load_config(path: Path | None = None) -> Config:
     with open(path or Path.cwd() / "config.yaml") as f:
