@@ -13,6 +13,7 @@ from deploy.build import Build
 from deploy.config import load_config, BuildConfig, Config
 from deploy.links import make_links
 from deploy.check import do_check
+from deploy.sync import do_sync
 
 
 @click.group()
@@ -24,6 +25,12 @@ def cli() -> None:
 def check() -> None:
     config = load_config()
     do_check(config)
+
+
+@cli.command(help="Synchronise all locations")
+def sync() -> None:
+    config = load_config()
+    do_sync(config)
 
 
 @cli.command(help="Build Cirrus and dependencies")
