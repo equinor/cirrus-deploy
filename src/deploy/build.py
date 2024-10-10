@@ -9,6 +9,7 @@ from contextlib import suppress
 from datetime import datetime
 from functools import cached_property
 from pathlib import Path
+from typing import Any
 import networkx as nx
 
 from deploy.config import BuildConfig, Config
@@ -96,7 +97,7 @@ class Package:
 
             asyncio.run(self._build(env, buildlog))
 
-    async def _build(self, env: dict[str, str], buildlog) -> None:
+    async def _build(self, env: dict[str, str], buildlog: Any) -> None:
         proc = await asyncio.create_subprocess_exec(
             self.builder,
             cwd=self.src,
@@ -127,7 +128,7 @@ class Build:
         self.cachepath = Path("tmp").resolve()
         buildmap = {x.name: x for x in config.builds}
 
-        graph = nx.DiGraph()
+        graph: nx.DiGraph[str] = nx.DiGraph()
         for build in config.builds:
             for dep in build.depends:
                 graph.add_edge(dep, build.name)

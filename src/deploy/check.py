@@ -91,7 +91,7 @@ async def collect(area: AreaConfig) -> Collect:
 
 
 async def _check(config: Config) -> None:
-    tasks: list[asyncio.Task] = []
+    tasks: list[asyncio.Task[Collect]] = []
 
     for area in config.areas:
         task = asyncio.create_task(collect(area))
@@ -101,7 +101,10 @@ async def _check(config: Config) -> None:
         config.areas, await asyncio.gather(*tasks, return_exceptions=True)
     ):
         print(f"--- {area.name} ---")
-        for d in info.versions:
+        if isinstance(info, BaseException):
+            raise info
+
+        for d in info.versions or []:
             if isinstance(d, VersionsDirType):
                 print(f"  # {d.name}")
             elif isinstance(d, VersionsLinkType):

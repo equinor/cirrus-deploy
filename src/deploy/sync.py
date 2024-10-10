@@ -39,7 +39,7 @@ async def _sync(config: Config) -> None:
     base = config.paths.local_base
     store = base / config.paths.store
 
-    tasks: list[asyncio.Task] = []
+    tasks: list[asyncio.Task[None]] = []
     for area in config.areas:
         task = asyncio.create_task(_sync_area(area, store))
         tasks.append(task)
