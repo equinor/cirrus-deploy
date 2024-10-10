@@ -21,7 +21,9 @@ jobs:
       with:
         python-version: "3.11"
     - name: Install dependencies
-      run: pip install .[dev]
+      run: |
+        pip install poetry
+        poetry install
     - name: Lint with ruff
       run: ruff check
     - name: Check formatting with ruff
