@@ -1,15 +1,18 @@
 from __future__ import annotations
 
+import asyncio
 import hashlib
 import os
 import subprocess
 import sys
 from contextlib import suppress
+from datetime import datetime
 from functools import cached_property, cache
 from pathlib import Path
 import networkx as nx
 
 from deploy.config import BuildConfig, Config
+from deploy.utils import redirect_output
 
 
 class Package:
@@ -61,7 +64,9 @@ class Package:
         git("checkout", "FETCH_HEAD")
 
     def build(self) -> None:
-        if self.out.exists():
+        try:
+            self.out.mkdir()
+        except FileExistsError:
             print(f"Ignoring {self.fullname}: Already built!", file=sys.stderr)
             return
 
@@ -75,15 +80,27 @@ class Package:
             "tmp": str(self.cachepath),
             "out": str(self.out),
         }
-        subprocess.run(
-            self.builder,
-            cwd=self.src,
-            env=env,
+        with open(self.out / "build.log", "w") as buildlog:
+            print("Built with https://github.com/equinor/cirrus-deploy", file=buildlog)
+            print(f"Build date: {datetime.now()}", file=buildlog)
+            print("----- BUILD CONFIG -----", file=buildlog)
+            print(self.config.model_dump_json(), file=buildlog)
+            print("------ BUILD  LOG ------", file=buildlog)
+
+            asyncio.run(self._build(env, buildlog))
+
+    async def _build(self, env: dict[str, str], buildlog) -> None:
+        proc = await asyncio.create_subprocess_exec(self.builder, cwd=self.src, env=env, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE)
+
+        await asyncio.gather(
+            proc.wait(),
+            redirect_output(self.config.name, proc.stdout, sys.stdout, buildlog),
+            redirect_output(self.config.name, proc.stderr, sys.stderr, buildlog),
         )
 
     @cached_property
     def manifest(self) -> str:
-        return "".join(sorted(f"{x.out}\n" for x in self.depends))
+        return "".join(sorted(f"{x.out}\n" for x in [*self.depends, self]))
 
 
 class Build:

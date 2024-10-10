@@ -1,20 +1,12 @@
 from __future__ import annotations
 
+
 import sys
 import asyncio
 from pathlib import Path
 
 from deploy.config import Config, AreaConfig
-
-
-async def _tee(stream: asyncio.StreamReader, name: str, io) -> None:
-    while not stream.at_eof():
-        try:
-            while True:
-                line = await stream.readuntil()
-                print(f"{name}> {line.decode('utf-8', errors='replace')[:-1]}", file=io)
-        except asyncio.IncompleteReadError:
-            await asyncio.sleep(0.5)
+from deploy.utils import redirect_output
 
 
 async def _ensure_dir(area: AreaConfig, path: Path) -> None:
@@ -28,8 +20,8 @@ async def _sync_area(area: AreaConfig, path: Path) -> None:
 
     await asyncio.gather(
         proc.wait(),
-        _tee(proc.stdout, area.name, sys.stdout),
-        _tee(proc.stderr, area.name, sys.stderr),
+        redirect_output(area.name, proc.stdout, sys.stdout),
+        redirect_output(area.name, proc.stderr, sys.stderr),
     )
 
 
