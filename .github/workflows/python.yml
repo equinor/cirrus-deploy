@@ -25,8 +25,8 @@ jobs:
         pip install poetry
         poetry install
     - name: Lint with ruff
-      run: ruff check
+      run: poetry run ruff check
     - name: Check formatting with ruff
-      run: ruff format --check
+      run: poetry run ruff format --check
     - name: Test with pytest
-      run: pytest tests
+      run: poetry run pytest tests
