@@ -3,7 +3,9 @@ import asyncio
 from typing import Any
 
 
-async def redirect_output(label: str, stream: asyncio.StreamReader | None, *fds: Any) -> None:
+async def redirect_output(
+    label: str, stream: asyncio.StreamReader | None, *fds: Any
+) -> None:
     if stream is None:
         return
 

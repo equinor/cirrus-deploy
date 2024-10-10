@@ -31,7 +31,9 @@ async def stream() -> AsyncIterator[asyncio.StreamReader]:
         task.cancel()
 
 
-async def test_empty_stream(stream: asyncio.StreamReader, capsys: pytest.CaptureFixture):
+async def test_empty_stream(
+    stream: asyncio.StreamReader, capsys: pytest.CaptureFixture
+):
     stream.feed_eof()
 
     out, err = capsys.readouterr()

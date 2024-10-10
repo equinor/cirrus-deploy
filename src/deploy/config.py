@@ -47,6 +47,7 @@ class Config(BaseModel):
     links: dict[str, str]
     areas: list[AreaConfig]
 
+
 def load_config(path: Path | None = None) -> Config:
     with open(path or Path.cwd() / "config.yaml") as f:
         return Config.model_validate(yaml.safe_load(f.read()))

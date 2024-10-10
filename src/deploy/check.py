@@ -1,10 +1,9 @@
 from __future__ import annotations
 import asyncio
-import os
 from typing import Literal
 
 import yaml
-from pydantic import BaseModel, RootModel, Field
+from pydantic import BaseModel
 
 from deploy.config import Config, AreaConfig
 
@@ -74,7 +73,16 @@ class Collect(BaseModel):
 
 
 async def collect(area: AreaConfig) -> Collect:
-    proc = await asyncio.create_subprocess_exec("ssh", "-T", area.host, "/usr/bin/env", "python3", stdin=asyncio.subprocess.PIPE, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE)
+    proc = await asyncio.create_subprocess_exec(
+        "ssh",
+        "-T",
+        area.host,
+        "/usr/bin/env",
+        "python3",
+        stdin=asyncio.subprocess.PIPE,
+        stdout=asyncio.subprocess.PIPE,
+        stderr=asyncio.subprocess.PIPE,
+    )
     stdout, stderr = await proc.communicate(COLLECTOR)
 
     print(f"Finished area {area.name}")
@@ -89,7 +97,9 @@ async def _check(config: Config) -> None:
         task = asyncio.create_task(collect(area))
         tasks.append(task)
 
-    for area, info in zip(config.areas, await asyncio.gather(*tasks, return_exceptions=True)):
+    for area, info in zip(
+        config.areas, await asyncio.gather(*tasks, return_exceptions=True)
+    ):
         print(f"--- {area.name} ---")
         for d in info.versions:
             if isinstance(d, VersionsDirType):
