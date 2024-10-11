@@ -12,9 +12,21 @@ from deploy.check import do_check
 from deploy.sync import do_sync
 
 
+USE_SYSTEM: bool = False
+
+
 @click.group()
-def cli() -> None:
-    pass
+@click.option(
+    "--system",
+    "-s",
+    is_flag=True,
+    help="Install to /prog/pflotran instead of ~/cirrus",
+    default=False,
+)
+def cli(system: bool) -> None:
+    global USE_SYSTEM
+
+    USE_SYSTEM = system
 
 
 @cli.command(help="Check locations")
@@ -26,7 +38,7 @@ def check() -> None:
 @cli.command(help="Synchronise all locations")
 def sync() -> None:
     config = load_config()
-    do_sync(config)
+    do_sync(config, system=USE_SYSTEM)
 
 
 @cli.command(help="Build Cirrus and dependencies")
@@ -42,21 +54,14 @@ def build(force: bool) -> None:
     tmp_path.mkdir(parents=True, exist_ok=True)
 
     config = load_config()
-    builder = Build(config, force=force)
+    builder = Build(config, force=force, system=USE_SYSTEM)
     builder.build()
 
 
 @cli.command(help="Generate symlinks from ./symlinks.json")
-@click.option(
-    "--system",
-    "-s",
-    is_flag=True,
-    help="Install to /prog/pflotran instead of ~/cirrus",
-    default=False,
-)
-def links(system: bool) -> None:
+def links() -> None:
     config = load_config()
-    make_links(config, system=system)
+    make_links(config, system=USE_SYSTEM)
 
 
 @cli.command(help="Run 'runcirrus' using the local installation")
