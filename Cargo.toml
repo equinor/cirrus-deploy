@@ -1,0 +1,12 @@
+[package]
+name = "cirrus-deploy"
+version = "0.1.0"
+edition = "2021"
+default-run = "runcirrus"
+
+[dependencies]
+clap = { version = "4.5.20", features = ["derive"] }
+
+[[bin]]
+name = "runcirrus"
+path = "src/runcirrus/main.rs"

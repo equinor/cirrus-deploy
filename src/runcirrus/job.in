@@ -1,0 +1,21 @@
+#!/bin/sh
+set -e
+
+cd "{outdir}"
+
+arg_mpi_transport=
+arg_machinefile=
+
+if [ -n "$LSB_MCPU_HOSTS" ]; then  # LSF
+    arg_machinefile="-machinefile $LSB_DJOB_RANKFILE"
+elif [ -n "$PBS_NODEFILE" ]; then  # PBS
+    arg_machinefile="-machinefile $PBS_NODEFILE"
+fi
+
+# Check for possibly non-working RDMA transport
+if lsmod | egrep -qw bnxt_re
+then
+    arg_mpi_transport="-mca btl vader,self,tcp -mca pml ^ucx"
+fi
+
+({root}/bin/mpirun $arg_mpi_transport $arg_machinefile {num_tasks} {mpi_args} {telemetry} {root}/bin/{progname} {cirrus_args} -{progname}in "{input_file}" -output_prefix "{outdir}/{case}" | tee "{outdir}/{case}.LOG") 3>&1 1>&2 2>&3 | tee "{outdir}/{case}.ERR"
