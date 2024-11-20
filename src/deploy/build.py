@@ -66,7 +66,7 @@ class Package:
         def git(*args: str | Path) -> None:
             subprocess.run(("git", *args), check=True, cwd=self.src)
 
-        git("init", "--branch", "main")
+        git("init", "-b", "main")
         git("remote", "add", "origin", self.config.git_url)
         git("fetch", "origin", self.config.git_ref)
         git("checkout", "FETCH_HEAD")
