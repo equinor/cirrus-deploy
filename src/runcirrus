@@ -65,6 +65,7 @@ class Arguments:
     mpi_args: str
     cirrus_args: str
     output_directory: str
+    interactive: bool
 
     telemetry: str | None = None
     bsub_args: str | None = None
@@ -91,6 +92,12 @@ def parse_args(argv: list[str] | None = None) -> Arguments:
         "--num-nodes",
         type=int,
         help="Number of nodes",
+    )
+    ap.add_argument(
+        "-i",
+        "--interactive",
+        action="store_true",
+        help="Run locally"
     )
     ap.add_argument(
         "-M",
@@ -244,6 +251,9 @@ def main() -> None:
     input_file = Path(args.input).resolve()
     if not input_file.exists():
         sys.exit(f"Cirrus input file '{input_file}' does not exit!")
+
+    if args.interactive:
+        args.queue = "local"
 
     if args.num_nodes and not args.num_tasks_per_node:
         sys.exit(
