@@ -233,16 +233,8 @@ def main() -> None:
     argv = []
     for arg in sys.argv:
         if arg == "-nn":
-            print(
-                "Warning: '-nn' argument has been deprecated in favour of '-N'",
-                file=sys.stderr,
-            )
             argv.append("-N")
         elif arg == "-nm":
-            print(
-                "Warning: '-nm' argument has been deprecated in favour of '-M'",
-                file=sys.stderr,
-            )
             argv.append("-M")
         else:
             argv.append(arg)
@@ -260,9 +252,7 @@ def main() -> None:
             "When specifying -N/--num-nodes, you must also specify -M/--num-tasks-per-node"
         )
     if args.num_tasks_per_node and not args.num_nodes:
-        sys.exit(
-            "When specifying -M/--num-tasks-per-node, you must also specify -N/--num-nodes"
-        )
+        args.num_nodes = 1
     if args.num_nodes and args.num_tasks:
         sys.exit("Specify exactly one of -n/--num-tasks or -N/--num-nodes")
     if args.queue != "local" and not (args.num_tasks or args.num_nodes):
