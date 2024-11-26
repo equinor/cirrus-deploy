@@ -64,6 +64,23 @@ def get_versions_path() -> Path:
     return Path(os.path.dirname(__file__)).parent / "versions"
 
 
+class PrintVersionAction(argparse.Action):
+    def __call__(self, parser, namespace, values, option_string=None):
+        possible_versions = []
+
+        for fpath in os.listdir(get_versions_path()):
+            if fpath.startswith("."):
+                continue
+
+            possible_versions.append(fpath)
+
+        if not possible_versions:
+            print(f"No installed versions found at {get_versions_path()}")
+        else:
+            print("\n".join(possible_versions))
+
+        sys.exit()
+
 @dataclass
 class Arguments:
     input: str
@@ -155,7 +172,8 @@ def parse_args(argv: list[str] | None = None) -> Arguments:
     )
     ap.add_argument(
         "--print-versions",
-        action="store_true",
+        action=PrintVersionAction,
+        nargs=0,
         help="Output Cirrus versions and exit",
     )
     return Arguments(**vars(ap.parse_args(argv[1:])))
