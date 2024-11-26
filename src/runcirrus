@@ -51,6 +51,19 @@ def ensure_local_on_hpc(args: Arguments) -> None:
         args.num_tasks = args.num_tasks or 1
 
 
+def get_versions_path() -> Path:
+    """Get directory path of install cirrus versions
+
+    Use CIRRUS_VERSIONS_PATH environment variable to determine where we are, or
+    if unset, use "versions" directory next to the location of this script.
+
+    """
+    if (path := os.environ.get("CIRRUS_VERSIONS_PATH")) is not None:
+        return Path(path)
+
+    return Path(os.path.dirname(__file__)).parent / "versions"
+
+
 @dataclass
 class Arguments:
     input: str
@@ -58,8 +71,7 @@ class Arguments:
     num_tasks_per_node: int
     num_nodes: int
     num_tasks: int | None
-    cirrus_version: str
-    cirrus_versions_path: str
+    version: str
     print_job_script: bool
     print_versions: bool
     mpi_args: str
@@ -107,7 +119,7 @@ def parse_args(argv: list[str] | None = None) -> Arguments:
     )
     ap.add_argument(
         "-v",
-        "--cirrus-version",
+        "--version",
         default=os.environ.get("CIRRUS_VERSION", "latest"),
         help="Version of Cirrus to use",
     )
@@ -116,11 +128,6 @@ def parse_args(argv: list[str] | None = None) -> Arguments:
         "--output-directory",
         default=os.getcwd(),
         help="Directory to store the output to"
-    )
-    ap.add_argument(
-        "--cirrus-versions-path",
-        default=os.environ.get("CIRRUS_VERSIONS_PATH", "/prog/pflotran/versions"),
-        help="Path to directory where Cirrus versions are located",
     )
     ap.add_argument(
         "--cirrus-args",
@@ -264,14 +271,14 @@ def main() -> None:
 
     ensure_local_on_hpc(args)
 
-    rootdir = (Path(args.cirrus_versions_path) / args.cirrus_version).resolve()
+    rootdir = (get_versions_path() / args.version).resolve()
     if not rootdir.exists():
         sys.exit(
-            f"Cirrus version '{args.cirrus_version}' is not installed in {args.cirrus_versions_path}"
+            f"Cirrus version '{args.version}' is not installed in {get_versions_path()}"
         )
 
     progname = "cirrus"
-    if args.cirrus_version and args.cirrus_version.split(".") < ["1", "9"]:
+    if args.version and args.version.split(".") < ["1", "9"]:
         progname = "pflotran"
 
     num_tasks = None
