@@ -16,6 +16,12 @@ builds:
     git_ref: c802022b034f868a5c033808c855a96c1233ff0d
     depends: [ petsc ]
 
+  - name: pflotran
+    version: 1.8.12
+    git_url: https://bitbucket.org/opengosim/pflotran_ogs_1.8
+    git_ref: 338b320c77417d89fffc23139964d74a19af1f0a
+    depends: [ petsc ]
+
 areas:
   - name: Bergen
     host: be-grid01.be.statoil.no
