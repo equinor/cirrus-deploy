@@ -119,8 +119,14 @@ class Package:
 
 class Build:
     def __init__(
-        self, config: Config, *, system: bool = False, force: bool = False
+        self,
+        config: Config,
+        *,
+        system: bool = False,
+        force: bool = False,
+        final: str = "cirrus",
     ) -> None:
+        self.final = final
         self.force = force
         self.base = config.paths.system_base if system else config.paths.local_base
         self.storepath = self.base / config.paths.store
@@ -143,10 +149,6 @@ class Build:
                 [self._packages[x] for x in build.depends],
             )
 
-    @property
-    def final(self) -> Package:
-        return self._packages["cirrus"]
-
     def build(self) -> None:
         self._build_packages()
         self._build_env()
@@ -156,8 +158,10 @@ class Build:
             pkg.build()
 
     def _build_env(self) -> None:
+        finalpkg = self._packages[self.final]
         path = (
-            self.finalpath / f"{self.final.config.version}-{self._get_build_number()}"
+            self.finalpath
+            / f"{finalpkg.config.version}-{self._get_build_number(finalpkg)}"
         )
 
         for pkg in reversed(self._packages.values()):
@@ -169,20 +173,22 @@ class Build:
                         os.symlink(os.path.join(srcdir, f), os.path.join(dstdir, f))
 
         # Write a manifest file
-        (path / "manifest").write_text(self.final.manifest)
+        (path / "manifest").write_text(finalpkg.manifest)
 
-    def _get_build_number(self) -> int:
+    def _get_build_number(self, finalpkg: Package) -> int:
         for i in range(1, 1000):
-            path = self.finalpath / f"{self.final.config.version}-{i}"
+            path = self.finalpath / f"{finalpkg.config.version}-{i}"
             if not path.is_dir():
                 return i
 
-            if (
-                not self.force
-                and self.final.manifest == (path / "manifest").read_text()
-            ):
+            try:
+                manifest = (path / "manifest").read_text()
+            except FileNotFoundError:
+                manifest = ""
+
+            if not self.force and finalpkg.manifest == manifest:
                 sys.exit(f"Environment already exists at {path}")
 
         sys.exit(
-            f"Out of range while trying to find a build number for {self.final.config.version}"
+            f"Out of range while trying to find a build number for {finalpkg.config.version}"
         )

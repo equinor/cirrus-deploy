@@ -49,12 +49,17 @@ def sync() -> None:
     default=False,
     help="Force adding a new environment even if one already exists (rollback)",
 )
-def build(force: bool) -> None:
+@click.option(
+    "--name",
+    "-n",
+    default="cirrus",
+)
+def build(force: bool, name: str) -> None:
     tmp_path = Path("tmp").resolve()
     tmp_path.mkdir(parents=True, exist_ok=True)
 
     config = load_config()
-    builder = Build(config, force=force, system=USE_SYSTEM)
+    builder = Build(config, force=force, system=USE_SYSTEM, final=name)
     builder.build()
 
 
