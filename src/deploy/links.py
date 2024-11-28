@@ -42,9 +42,8 @@ def validate(base: Path) -> None:
 
 
 def make_links(config: Config, *, system: bool) -> None:
-    base = (
-        config.paths.system_base if system else config.paths.local_base
-    ) / config.paths.envs
+    base = Path(config.paths.system_base if system else config.paths.local_base)
+    base /= config.paths.envs
 
     for source, target in config.links.items():
         path = base / source

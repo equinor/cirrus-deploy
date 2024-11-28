@@ -103,7 +103,7 @@ class Arguments:
     exclusive: bool | None = None
 
 
-def parse_args(argv: list[str] | None = None) -> Arguments:
+def parse_args(argv: list[str]) -> Arguments:
     ap = argparse.ArgumentParser(
         description="Wrapper for running Cirrus with MPI in Equinor"
     )
@@ -198,7 +198,7 @@ def run_bsub(script: str, args: Arguments, input_file: Path) -> NoReturn:
         resources.append(f"span[ptile={args.num_tasks_per_node}]")
     resource_string = " ".join(resources)
 
-    user_args = args.bsub_args or []
+    user_args = shlex.split(args.bsub_args or "")
 
     script_path = input_file.parent / f"{input_file.stem}.run"
     script_path.write_text(script, encoding="utf-8")
@@ -225,7 +225,7 @@ def run_bsub(script: str, args: Arguments, input_file: Path) -> NoReturn:
 def run_qsub(script: str, args: Arguments, input_file: Path) -> NoReturn:
     place = "scatter:excl" if args.exclusive else "scatter:shared"
 
-    user_args = args.qsub_args or []
+    user_args = shlex.split(args.qsub_args or "")
 
     script_path = input_file.parent / f"{input_file.stem}.run"
     script_path.write_text(script, encoding="utf-8")

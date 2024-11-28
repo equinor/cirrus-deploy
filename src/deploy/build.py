@@ -128,7 +128,9 @@ class Build:
     ) -> None:
         self.final = final
         self.force = force
-        self.base = config.paths.system_base if system else config.paths.local_base
+        self.base = Path(
+            config.paths.system_base if system else config.paths.local_base
+        )
         self.storepath = self.base / config.paths.store
         self.finalpath = self.base / config.paths.envs
         self.cachepath = Path("tmp").resolve()
