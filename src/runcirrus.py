@@ -81,6 +81,7 @@ class PrintVersionAction(argparse.Action):
 
         sys.exit()
 
+
 @dataclass
 class Arguments:
     input: str
@@ -122,12 +123,7 @@ def parse_args(argv: list[str] | None = None) -> Arguments:
         type=int,
         help="Number of nodes",
     )
-    ap.add_argument(
-        "-i",
-        "--interactive",
-        action="store_true",
-        help="Run locally"
-    )
+    ap.add_argument("-i", "--interactive", action="store_true", help="Run locally")
     ap.add_argument(
         "-M",
         "--num-tasks-per-node",
@@ -144,7 +140,7 @@ def parse_args(argv: list[str] | None = None) -> Arguments:
         "-o",
         "--output-directory",
         default=os.getcwd(),
-        help="Directory to store the output to"
+        help="Directory to store the output to",
     )
     ap.add_argument(
         "--cirrus-args",
@@ -164,7 +160,9 @@ def parse_args(argv: list[str] | None = None) -> Arguments:
         ap.add_argument("--bsub-args", help="Additional arguments for bsub command")
     if HAVE_QSUB:
         ap.add_argument("--qsub-args", help="Additional arguments for qsub command")
-        ap.add_argument("-e", "--exclusive", help="Exclusive node usage [default: shared]")
+        ap.add_argument(
+            "-e", "--exclusive", help="Exclusive node usage [default: shared]"
+        )
     ap.add_argument(
         "--print-job-script",
         action="store_true",
