@@ -31,13 +31,15 @@ def cli(system: bool) -> None:
 
 @cli.command(help="Check locations")
 def check() -> None:
-    config = load_config()
+    configpath = Path.cwd()
+    config = load_config(configpath)
     do_check(config)
 
 
 @cli.command(help="Synchronise all locations")
 def sync() -> None:
-    config = load_config()
+    configpath = Path.cwd()
+    config = load_config(configpath)
     do_sync(config, system=USE_SYSTEM)
 
 
@@ -49,23 +51,20 @@ def sync() -> None:
     default=False,
     help="Force adding a new environment even if one already exists (rollback)",
 )
-@click.option(
-    "--name",
-    "-n",
-    default="cirrus",
-)
-def build(force: bool, name: str) -> None:
+def build(force: bool) -> None:
     tmp_path = Path("tmp").resolve()
     tmp_path.mkdir(parents=True, exist_ok=True)
 
-    config = load_config()
-    builder = Build(config, force=force, system=USE_SYSTEM, final=name)
+    configpath = Path.cwd()
+    config = load_config(configpath)
+    builder = Build(configpath, config, force=force, system=USE_SYSTEM)
     builder.build()
 
 
 @cli.command(help="Generate symlinks from ./symlinks.json")
 def links() -> None:
-    config = load_config()
+    configpath = Path.cwd()
+    config = load_config(configpath)
     make_links(config, system=USE_SYSTEM)
 
 

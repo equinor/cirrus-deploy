@@ -19,7 +19,11 @@ def get_latest(basepath: Path) -> str:
         if path.is_symlink():
             continue
 
-        version = Version.parse(name)
+        try:
+            version = Version.parse(name)
+        except ValueError:
+            continue
+
         if latest is None or version > latest[0]:
             latest = (version, name)
 
@@ -43,13 +47,13 @@ def validate(base: Path) -> None:
 
 def make_links(config: Config, *, system: bool) -> None:
     base = Path(config.paths.system_base if system else config.paths.local_base)
-    base /= config.paths.envs
 
-    for source, target in config.links.items():
-        path = base / source
-        if target == "^":
-            target = get_latest(base)
-        path.unlink(missing_ok=True)
-        path.symlink_to(target)
+    for subdir, links in config.links.items():
+        for source, target in links.items():
+            path = base / subdir / source
+            if target == "^":
+                target = get_latest(base / subdir)
+            path.unlink(missing_ok=True)
+            path.symlink_to(target)
 
-    validate(base)
+        validate(base / subdir)

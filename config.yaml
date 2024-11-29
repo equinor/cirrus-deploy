@@ -1,26 +1,45 @@
 paths:
   local_base: ~/cirrus
   system_base: /prog/pflotran
-  envs: versions
   store: versions/.store
 
 builds:
   - name: petsc
     version: 3.19.1
-    git_url: git@github.com:petsc/petsc.git
-    git_ref: a093114c2e7b4ba1f47e6ac8a72c57724150f16d
+    src:
+      type: git
+      url: git@github.com:petsc/petsc.git
+      ref: a093114c2e7b4ba1f47e6ac8a72c57724150f16d
 
   - name: cirrus
     version: 1.9.2
-    git_url: git@github.com:equinor/cirrus.git
-    git_ref: c802022b034f868a5c033808c855a96c1233ff0d
     depends: [ petsc ]
+    src:
+      type: git
+      url: git@github.com:equinor/cirrus.git
+      ref: c802022b034f868a5c033808c855a96c1233ff0d
 
   - name: pflotran
     version: 1.8.12
-    git_url: https://bitbucket.org/opengosim/pflotran_ogs_1.8
-    git_ref: 338b320c77417d89fffc23139964d74a19af1f0a
     depends: [ petsc ]
+    src:
+      type: git
+      url: https://bitbucket.org/opengosim/pflotran_ogs_1.8
+      ref: 338b320c77417d89fffc23139964d74a19af1f0a
+
+  - name: runcirrus
+    version: 1.0.0
+    src:
+      type: file
+      path: src/runcirrus.py
+
+envs:
+  - name: cirrus
+    dest: versions
+  - name: pflotran
+    dest: versions
+  - name: runcirrus
+    dest: .runcirrus-versions
 
 areas:
   - name: Bergen
@@ -39,9 +58,12 @@ areas:
     host: stjohn-grid01.stjohn.statoil.no
 
 links:
-  '1.9.2': '1.9.2-1'
-  '1.8.12': '1.8.12-1'
-  '1.9': '1.9.2'
-  '1.8': '1.8.12'
-  'stable': '1.9'
-  'latest': '^'
+  versions:
+    '1.9.2': '1.9.2-1'
+    '1.8.12': '1.8.12-2'
+    '1.9': '1.9.2'
+    '1.8': '1.8.12'
+    'stable': '1.9'
+    'latest': '^'
+  '.runcirrus-versions':
+    'latest': '^'

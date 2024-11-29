@@ -11,19 +11,22 @@ from functools import cached_property
 from pathlib import Path
 from typing import Any
 import networkx as nx
+from itertools import chain
 
-from deploy.config import BuildConfig, Config
+from deploy.config import BuildConfig, Config, FileConfig, GitConfig
 from deploy.utils import redirect_output
 
 
 class Package:
     def __init__(
         self,
+        configpath: Path,
         storepath: Path,
         cachepath: Path,
         config: BuildConfig,
         depends: list[Package],
     ) -> None:
+        self.configpath = configpath
         self.storepath = storepath
         self.cachepath = cachepath
         self.config = config
@@ -39,7 +42,12 @@ class Package:
 
     @property
     def src(self) -> Path:
-        return self.cachepath / f"{self.config.name}-{self.config.git_ref}.git"
+        if isinstance(self.config.src, GitConfig):
+            return self.cachepath / f"{self.config.name}-{self.config.src.ref}.git"
+        elif isinstance(self.config.src, FileConfig):
+            return self.configpath / self.config.src.path
+        else:
+            raise RuntimeError("Unknown self.config.src type")
 
     @property
     def builder(self) -> Path:
@@ -58,6 +66,9 @@ class Package:
         return h.hexdigest()
 
     def checkout(self) -> None:
+        if not isinstance(gitconf := self.config.src, GitConfig):
+            return
+
         try:
             self.src.mkdir(parents=True)
         except FileExistsError:
@@ -67,8 +78,8 @@ class Package:
             subprocess.run(("git", *args), check=True, cwd=self.src)
 
         git("init", "-b", "main")
-        git("remote", "add", "origin", self.config.git_url)
-        git("fetch", "origin", self.config.git_ref)
+        git("remote", "add", "origin", gitconf.url)
+        git("fetch", "origin", gitconf.ref)
         git("checkout", "FETCH_HEAD")
 
     def build(self) -> None:
@@ -98,9 +109,11 @@ class Package:
             asyncio.run(self._build(env, buildlog))
 
     async def _build(self, env: dict[str, str], buildlog: Any) -> None:
+        cwd = self.src if self.src.is_dir() else Path("/tmp")
+
         proc = await asyncio.create_subprocess_exec(
             self.builder,
-            cwd=self.src,
+            cwd=cwd,
             env=env,
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE,
@@ -120,24 +133,23 @@ class Package:
 class Build:
     def __init__(
         self,
+        configpath: Path,
         config: Config,
         *,
         system: bool = False,
         force: bool = False,
-        final: str = "cirrus",
     ) -> None:
-        self.final = final
         self.force = force
         self.base = Path(
             config.paths.system_base if system else config.paths.local_base
         )
         self.storepath = self.base / config.paths.store
-        self.finalpath = self.base / config.paths.envs
         self.cachepath = Path("tmp").resolve()
         buildmap = {x.name: x for x in config.builds}
 
         graph: nx.DiGraph[str] = nx.DiGraph()
         for build in config.builds:
+            graph.add_node(build.name)
             for dep in build.depends:
                 graph.add_edge(dep, build.name)
 
@@ -145,43 +157,48 @@ class Build:
         for node in nx.topological_sort(graph):
             build = buildmap[node]
             self._packages[node] = Package(
+                configpath,
                 self.storepath,
                 self.cachepath,
                 build,
                 [self._packages[x] for x in build.depends],
             )
 
+        self._envs: list[tuple[str, str]] = [(e.name, e.dest) for e in config.envs]
+
     def build(self) -> None:
         self._build_packages()
-        self._build_env()
+        self._build_envs()
 
     def _build_packages(self) -> None:
         for pkg in self._packages.values():
             pkg.build()
 
-    def _build_env(self) -> None:
-        finalpkg = self._packages[self.final]
-        path = (
-            self.finalpath
-            / f"{finalpkg.config.version}-{self._get_build_number(finalpkg)}"
-        )
+    def _build_envs(self) -> None:
+        for name, dest in self._envs:
+            pkg = self._packages[name]
+            path = self._get_build_path(self.base / dest, pkg)
+            if path is None:
+                continue
+            self._build_env_for_package(path, pkg)
 
-        for pkg in reversed(self._packages.values()):
+    def _build_env_for_package(self, base: Path, finalpkg: Package) -> None:
+        for pkg in chain([finalpkg], finalpkg.depends):
             for srcdir, subdirs, files in os.walk(pkg.out):
-                dstdir = path / srcdir[len(str(pkg.out)) + 1 :]
+                dstdir = base / srcdir[len(str(pkg.out)) + 1 :]
                 dstdir.mkdir(exist_ok=True)
                 for f in files:
                     with suppress(FileExistsError):
                         os.symlink(os.path.join(srcdir, f), os.path.join(dstdir, f))
 
         # Write a manifest file
-        (path / "manifest").write_text(finalpkg.manifest)
+        (base / "manifest").write_text(finalpkg.manifest)
 
-    def _get_build_number(self, finalpkg: Package) -> int:
+    def _get_build_path(self, base: Path, finalpkg: Package) -> Path | None:
         for i in range(1, 1000):
-            path = self.finalpath / f"{finalpkg.config.version}-{i}"
+            path = base / f"{finalpkg.config.version}-{i}"
             if not path.is_dir():
-                return i
+                return path
 
             try:
                 manifest = (path / "manifest").read_text()
@@ -189,7 +206,8 @@ class Build:
                 manifest = ""
 
             if not self.force and finalpkg.manifest == manifest:
-                sys.exit(f"Environment already exists at {path}")
+                print(f"Environment already exists at {path}", file=sys.stderr)
+                return None
 
         sys.exit(
             f"Out of range while trying to find a build number for {finalpkg.config.version}"

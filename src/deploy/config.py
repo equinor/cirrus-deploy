@@ -1,4 +1,5 @@
 from __future__ import annotations
+from typing import Literal
 
 from pydantic import BaseModel, field_validator, Field
 from pathlib import Path
@@ -7,18 +8,32 @@ import yaml
 from pydantic import DirectoryPath
 
 
+class GitConfig(BaseModel):
+    type: Literal["git"]
+    url: str
+    ref: str
+
+
+class FileConfig(BaseModel):
+    type: Literal["file"]
+    path: str
+
+
 class BuildConfig(BaseModel):
     name: str
     version: str
-    git_url: str
-    git_ref: str
+    src: GitConfig | FileConfig
     depends: list[str] = Field(default_factory=list)
+
+
+class EnvConfig(BaseModel):
+    name: str
+    dest: str
 
 
 class PathConfig(BaseModel):
     local_base: DirectoryPath
     system_base: str
-    envs: Path
     store: Path
 
     @field_validator("local_base", mode="before")
@@ -29,7 +44,7 @@ class PathConfig(BaseModel):
         (dir_ / "bin").mkdir(parents=True, exist_ok=True)
         return dir_
 
-    @field_validator("envs", "store")
+    @field_validator("store")
     @classmethod
     def _validate_path(cls, value: Path) -> Path:
         if value.is_absolute():
@@ -45,10 +60,11 @@ class AreaConfig(BaseModel):
 class Config(BaseModel):
     paths: PathConfig
     builds: list[BuildConfig]
-    links: dict[str, str]
+    envs: list[EnvConfig]
     areas: list[AreaConfig]
+    links: dict[str, dict[str, str]]
 
 
-def load_config(path: Path | None = None) -> Config:
-    with open(path or Path.cwd() / "config.yaml") as f:
+def load_config(path: Path) -> Config:
+    with open(path / "config.yaml") as f:
         return Config.model_validate(yaml.safe_load(f.read()))
