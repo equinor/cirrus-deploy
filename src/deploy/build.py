@@ -60,6 +60,9 @@ class Package:
         h.update(self.config.model_dump_json().encode("utf-8"))
         h.update(self.builder.read_bytes())
 
+        if isinstance(self.config.src, FileConfig):
+            h.update(self.src.read_bytes())
+
         for p in self.depends:
             h.update(p.buildhash.encode("utf-8"))
 
