@@ -94,7 +94,7 @@ class Arguments:
     print_versions: bool
     mpi_args: str
     cirrus_args: str
-    output_directory: str
+    output_directory: str | None
     interactive: bool
 
     telemetry: str | None = None
@@ -139,7 +139,6 @@ def parse_args(argv: list[str]) -> Arguments:
     ap.add_argument(
         "-o",
         "--output-directory",
-        default=os.getcwd(),
         help="Directory to store the output to",
     )
     ap.add_argument(
@@ -303,6 +302,11 @@ def main() -> None:
     elif args.num_nodes:
         num_tasks = args.num_nodes * args.num_tasks_per_node
 
+    if args.output_directory:
+        outdir = Path(args.output_directory)
+    else:
+        outdir = Path(args.input).parent
+
     script = SCRIPT.format(
         root=rootdir,
         workdir=input_file.parent,
@@ -312,7 +316,7 @@ def main() -> None:
         mpi_args=args.mpi_args or "",
         cirrus_args=args.cirrus_args or "",
         num_tasks=f"-np {num_tasks}" if num_tasks is not None else "",
-        outdir=Path(args.output_directory).resolve(),
+        outdir=outdir.resolve(),
         telemetry=args.telemetry,
     )
 
