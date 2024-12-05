@@ -61,7 +61,7 @@ def ensure_local_on_hpc(args: Arguments) -> None:
         x in os.environ for x in ("LSB_DJOB_RANKFILE", "PBS_NODEFILE")
     ):
         args.queue = "local"
-        args.num_tasks = args.num_tasks or 1
+        args.num_tasks_per_machine = args.num_tasks_per_machine or 1
 
 
 def get_versions_path() -> Path:
@@ -99,9 +99,8 @@ class PrintVersionAction(argparse.Action):
 class Arguments:
     input: str
     queue: str
-    num_tasks_per_node: int
-    num_nodes: int
-    num_tasks: int | None
+    num_tasks_per_machine: int
+    num_machines: int
     version: str
     print_job_script: bool
     print_versions: bool
@@ -126,23 +125,18 @@ def parse_args(argv: list[str]) -> Arguments:
     )
     ap.add_argument(
         "-n",
-        "--num-tasks",
+        "--num-tasks-per-machine",
         type=int,
-        help="Number of tasks/processes to use",
+        help="Number of tasks/processes per machine",
     )
     ap.add_argument(
-        "-N",
-        "--num-nodes",
+        "-m",
+        "--num-machines",
+        default=1,
         type=int,
-        help="Number of nodes",
+        help="Number of machines (nodes)",
     )
     ap.add_argument("-i", "--interactive", action="store_true", help="Run locally")
-    ap.add_argument(
-        "-M",
-        "--num-tasks-per-node",
-        type=int,
-        help="Number of tasks/processes per node",
-    )
     ap.add_argument(
         "-v",
         "--version",
@@ -203,11 +197,10 @@ def run_local(script: str, args: Arguments) -> NoReturn:
 
 
 def run_bsub(script: str, args: Arguments, input_file: Path) -> NoReturn:
-    num_tasks = args.num_tasks or args.num_nodes * args.num_tasks_per_node
+    num_tasks = args.num_machines * args.num_tasks_per_machine
 
     resources = ["select[rhel >= 8]", "same[type:model]"]
-    if args.num_tasks_per_node:
-        resources.append(f"span[ptile={args.num_tasks_per_node}]")
+    resources.append(f"span[ptile={args.num_tasks_per_machine}]")
     resource_string = " ".join(resources)
 
     user_args = shlex.split(args.bsub_args or "")
@@ -247,7 +240,7 @@ def run_qsub(script: str, args: Arguments, input_file: Path) -> NoReturn:
         "-q",
         args.queue,
         "-l",
-        f"select={args.num_nodes}:ncpus={args.num_tasks_per_node}:mpiprocs={args.num_tasks_per_node}",
+        f"select={args.num_machines}:ncpus={args.num_tasks_per_machine}:mpiprocs={args.num_tasks_per_machine}",
         "-l",
         f"place={place}",
         "-j",
@@ -268,9 +261,9 @@ def main() -> None:
     argv = []
     for arg in sys.argv:
         if arg == "-nn":
-            argv.append("-N")
+            argv.append("-m")
         elif arg == "-nm":
-            argv.append("-M")
+            argv.append("-n")
         else:
             argv.append(arg)
 
@@ -282,22 +275,18 @@ def main() -> None:
     if args.interactive:
         args.queue = "local"
 
-    if args.num_nodes and not args.num_tasks_per_node:
-        sys.exit(
-            "When specifying -N/--num-nodes, you must also specify -M/--num-tasks-per-node"
-        )
-    if args.num_tasks_per_node and not args.num_nodes:
-        args.num_nodes = 1
-    if args.num_nodes and args.num_tasks:
-        sys.exit("Specify exactly one of -n/--num-tasks or -N/--num-nodes")
-    if args.queue != "local" and not (args.num_tasks or args.num_nodes):
-        sys.exit(
-            "When queue is non-local, you must set -n/--num-tasks or -N/--num-nodes & -M/--num-tasks-per-node"
-        )
-    if args.num_tasks and args.queue != "local" and HAVE_QSUB:
-        sys.exit("-n option is not supported on OpenPBS")
-
     ensure_local_on_hpc(args)
+
+    if args.num_tasks_per_machine is None:
+        if args.queue != "local":
+            sys.exit(
+                "Must specify -n/--num-tasks-per-machine when running on a non-local queue"
+            )
+        args.num_tasks_per_machine = os.cpu_count() or 1
+    if args.num_machines > 1 and args.queue == "local":
+        sys.exit(
+            "Must specify -q/--queue when attempting to run on multiple machines with -m/--num-machines"
+        )
 
     version = default_version(os.path.basename(sys.argv[0]))
     if args.version:
@@ -313,11 +302,7 @@ def main() -> None:
     if args.version and args.version.split(".") < ["1", "9"]:
         progname = "pflotran"
 
-    num_tasks = None
-    if args.num_tasks:
-        num_tasks = args.num_tasks
-    elif args.num_nodes:
-        num_tasks = args.num_nodes * args.num_tasks_per_node
+    num_tasks = args.num_machines * args.num_tasks_per_machine
 
     if args.output_directory:
         outdir = Path(args.output_directory)
