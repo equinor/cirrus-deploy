@@ -1,11 +1,12 @@
 #!/usr/bin/python3.11
 from __future__ import annotations
 import sys
-from typing import NoReturn
+from typing import Any, NoReturn
 import os
 import argparse
 import shutil
 import shlex
+import re
 from pathlib import Path
 from dataclasses import dataclass
 
@@ -39,6 +40,18 @@ HAVE_BSUB = shutil.which("bsub") is not None  # IBM LSF
 HAVE_QSUB = shutil.which("qsub") is not None  # OpenPBS
 
 
+def default_version(script_name: str) -> str:
+    """Determine the default version from script name"""
+    p = re.compile(r"^run(cirrus|pflotran)(\d+(?:\.\d+)*)?")
+    if (m := p.match(script_name)) is None:
+        return "stable"
+    if v := m.group(2):
+        return v
+    if m.group(1) == "pflotran":
+        return "1.8"
+    return "stable"
+
+
 def ensure_local_on_hpc(args: Arguments) -> None:
     """
     If we're running on the cluster alrea, override queue to local and set
@@ -65,7 +78,7 @@ def get_versions_path() -> Path:
 
 
 class PrintVersionAction(argparse.Action):
-    def __call__(self, parser, namespace, values, option_string=None):
+    def __call__(self, *_args: Any) -> None:
         possible_versions = []
 
         for fpath in os.listdir(get_versions_path()):
@@ -286,10 +299,14 @@ def main() -> None:
 
     ensure_local_on_hpc(args)
 
-    rootdir = (get_versions_path() / args.version).resolve()
+    version = default_version(os.path.basename(sys.argv[0]))
+    if args.version:
+        version = args.version
+
+    rootdir = (get_versions_path() / version).resolve()
     if not rootdir.exists():
         sys.exit(
-            f"Cirrus version '{args.version}' is not installed in {get_versions_path()}"
+            f"Cirrus version '{version}' is not installed in {get_versions_path()}"
         )
 
     progname = "cirrus"

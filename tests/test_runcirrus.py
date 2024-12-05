@@ -22,3 +22,16 @@ def test_printversions_ignore_hidden(dirs, expected_out, capsys, tmp_path, monke
         runcirrus.parse_args(["0", "--print-versions"])
 
     assert capsys.readouterr().out == expected_out
+
+
+@pytest.mark.parametrize(
+    "script_name,expect",
+    [
+        ("runcirrus", "stable"),
+        ("runpflotran", "1.8"),
+        ("runpflotran1.8.12", "1.8.12"),
+        ("runpflotran1.8-openpbs-rh8", "1.8"),
+    ],
+)
+def test_default_version(script_name, expect, monkeypatch):
+    assert runcirrus.default_version(script_name) == expect, f"{script_name=}"
