@@ -240,7 +240,6 @@ def parse_args(argv: list[str]) -> Arguments:
     ap.add_argument(
         "-v",
         "--version",
-        default=os.environ.get("CIRRUS_VERSION", "latest"),
         help="Version of Cirrus to use",
     )
     ap.add_argument(
