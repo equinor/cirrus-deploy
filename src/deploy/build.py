@@ -73,15 +73,13 @@ class Package:
         if not isinstance(gitconf := self.config.src, GitConfig):
             return
 
-        def git(*args: str | Path) -> None:
-            subprocess.run(("git", *args), check=True, cwd=self.src)
-
         try:
             self.src.mkdir(parents=True)
         except FileExistsError:
-            git("reset", "--hard")
-            git("clean", "-xdf")
             return
+
+        def git(*args: str | Path) -> None:
+            subprocess.run(("git", *args), check=True, cwd=self.src)
 
         git("init", "-b", "main")
         git("remote", "add", "origin", gitconf.url)
