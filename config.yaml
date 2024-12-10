@@ -39,7 +39,7 @@ envs:
   - name: pflotran
     dest: versions
   - name: runcirrus
-    dest: .runcirrus-versions
+    dest: versions/runcirrus
 
 areas:
   - name: Bergen
@@ -65,5 +65,5 @@ links:
     '1.8': '1.8.12'
     'stable': '1.9'
     'latest': '^'
-  '.runcirrus-versions':
+  versions/runcirrus:
     'latest': '^'

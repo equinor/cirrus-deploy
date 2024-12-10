@@ -12,6 +12,7 @@ from pathlib import Path
 from typing import Any
 import networkx as nx
 from itertools import chain
+import shutil
 
 from deploy.config import BuildConfig, Config, FileConfig, GitConfig
 from deploy.utils import redirect_output
@@ -72,13 +73,15 @@ class Package:
         if not isinstance(gitconf := self.config.src, GitConfig):
             return
 
+        def git(*args: str | Path) -> None:
+            subprocess.run(("git", *args), check=True, cwd=self.src)
+
         try:
             self.src.mkdir(parents=True)
         except FileExistsError:
+            git("reset", "--hard")
+            git("clean", "-xdf")
             return
-
-        def git(*args: str | Path) -> None:
-            subprocess.run(("git", *args), check=True, cwd=self.src)
 
         git("init", "-b", "main")
         git("remote", "add", "origin", gitconf.url)
@@ -109,9 +112,20 @@ class Package:
             print(self.config.model_dump_json(), file=buildlog)
             print("------ BUILD  LOG ------", file=buildlog)
 
-            asyncio.run(self._build(env, buildlog))
+            success = asyncio.run(self._build(env, buildlog))
 
-    async def _build(self, env: dict[str, str], buildlog: Any) -> None:
+        if not success:
+            for i in range(1000):
+                fail_path = self.storepath / f"fail-{self.fullname}-{i}"
+                if not fail_path.exists():
+                    break
+            else:
+                sys.exit(f"Could not move failed build at {self.out}")
+
+            self.out.rename(fail_path)
+            sys.exit(f"Building {self.fullname} failed. See failed build at: {fail_path}")
+
+    async def _build(self, env: dict[str, str], buildlog: Any) -> bool:
         cwd = self.src if self.src.is_dir() else Path("/tmp")
 
         proc = await asyncio.create_subprocess_exec(
@@ -127,6 +141,8 @@ class Package:
             redirect_output(self.config.name, proc.stdout, sys.stdout, buildlog),
             redirect_output(self.config.name, proc.stderr, sys.stderr, buildlog),
         )
+
+        return proc.returncode == 0
 
     @cached_property
     def manifest(self) -> str:
@@ -189,7 +205,7 @@ class Build:
         for pkg in chain([finalpkg], finalpkg.depends):
             for srcdir, subdirs, files in os.walk(pkg.out):
                 dstdir = base / srcdir[len(str(pkg.out)) + 1 :]
-                dstdir.mkdir(exist_ok=True)
+                dstdir.mkdir(parents=True, exist_ok=True)
                 for f in files:
                     with suppress(FileExistsError):
                         os.symlink(os.path.join(srcdir, f), os.path.join(dstdir, f))
