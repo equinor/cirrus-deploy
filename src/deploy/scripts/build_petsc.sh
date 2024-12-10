@@ -22,6 +22,3 @@ export PETSC_ARCH=gnu-c-opt
 make all
 make check
 make install
-
-# Patch OpenMPI to add new MPI transports for Azure VMs
-sed -i "s/4119,4121/4119,4120,4121,4124/" "$out/share/openmpi/mca-btl-openib-device-params.ini"
