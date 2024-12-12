@@ -9,6 +9,10 @@ async def redirect_output(
     if stream is None:
         return
 
-    async for line in stream:
+    try:
+        async for line in stream:
+            for fd in fds:
+                print(f"{label}> {line.decode('utf-8', errors='replace')[:-1]}", file=fd)
+    except Exception as exc:
         for fd in fds:
-            print(f"{label}> {line.decode('utf-8', errors='replace')[:-1]}", file=fd)
+            print(exc, file=fd)

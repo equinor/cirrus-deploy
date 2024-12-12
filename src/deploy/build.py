@@ -90,7 +90,7 @@ class Package:
         try:
             self.out.mkdir()
         except FileExistsError:
-            print(f"Ignoring {self.fullname}: Already built!", file=sys.stderr)
+            print(f"Ignoring {self.fullname}: Already built at {self.out}", file=sys.stderr)
             return
 
         print(f"Building {self.fullname}...")
