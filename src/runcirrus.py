@@ -391,10 +391,13 @@ def main() -> None:
     if args.version:
         version = args.version
 
-    rootdir = (get_versions_path() / version).resolve()
-    if not rootdir.exists():
+    for versions_path in get_versions_path(), Path("/prog/cirrus/versions"):
+        rootdir = (versions_path / version).resolve()
+        if rootdir.exists():
+            break
+    else:
         sys.exit(
-            f"Cirrus version '{version}' is not installed in {get_versions_path()}"
+            f"Cirrus version '{version}' is not installed in {versions_path}"
         )
 
     progname = "cirrus"
