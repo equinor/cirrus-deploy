@@ -398,7 +398,7 @@ def main() -> None:
         )
 
     progname = "cirrus"
-    if args.version and args.version.split(".") < ["1", "9"]:
+    if version and version.split(".") < ["1", "9"]:
         progname = "pflotran"
 
     num_tasks = args.num_machines * args.num_tasks_per_machine
