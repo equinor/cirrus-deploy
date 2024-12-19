@@ -22,6 +22,6 @@ export PETSC_DIR="$petsc"
 export PETSC_ARCH=
 export PYTHONPATH="$tmp/six-*-.whl"
 
-make cirrus
+make cirrus UPDATE_PROVENANCE=0
 make test
 install -D cirrus "$out/bin/cirrus"
