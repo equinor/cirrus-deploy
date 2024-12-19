@@ -6,11 +6,11 @@ set -ex
 : "${petsc:?}"
 : "${src:?}"
 
-if ! [[ -f "$tmp/six-*-.whl" ]]
-then
-    python3 -m pip download -d "$tmp" six
-fi
-
+# if ! [[ -f "$tmp/six-*-.whl" ]]
+# then
+#     python3 -m pip download -d "$tmp" six
+# fi
+#
 # --------------------------------------
 # Build Cirrus
 # --------------------------------------
