@@ -25,7 +25,5 @@ RUN ssh-keyscan github.com >> /root/.ssh/known_hosts
 RUN chmod 0700 /root/.ssh
 
 RUN /tmp/deploy_env/bin/pip install .
-RUN --mount=type=ssh /tmp/deploy_env/bin/deploy build
-RUN /tmp/deploy_env/bin/deploy links
 
 ENTRYPOINT ["/bin/bash","-c", "source /tmp/deploy_env/bin/activate; bash"]
