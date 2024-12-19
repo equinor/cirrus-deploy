@@ -16,7 +16,7 @@ builds:
     depends: [ petsc ]
     src:
       type: git
-      url: git@github.com:equinor/cirrus.git
+      url: git@github.com-cirrus:equinor/cirrus.git
       ref: c802022b034f868a5c033808c855a96c1233ff0d
 
   - name: pflotran

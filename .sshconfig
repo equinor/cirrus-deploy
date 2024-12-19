@@ -1,0 +1,5 @@
+
+Host github.com-cirrus
+    Hostname github.com
+    IdentityFile=/root/.ssh/cirrus
+    PubkeyAcceptedKeyTypes=ssh-ed25519

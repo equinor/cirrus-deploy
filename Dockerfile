@@ -20,8 +20,9 @@ COPY ./config.yaml ./config.yaml
 # Poetry requires readme to exist
 RUN touch ./README.md
 
-RUN mkdir -p /root/.ssh/
+COPY ./ssh /root/.ssh
 RUN ssh-keyscan github.com >> /root/.ssh/known_hosts
+COPY .sshconfig /root/.ssh/config
 RUN chmod 0700 /root/.ssh
 
 RUN /tmp/deploy_env/bin/pip install .
