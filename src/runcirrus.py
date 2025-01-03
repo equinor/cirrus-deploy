@@ -111,7 +111,7 @@ def anonymize_fqdn(fqdn: str) -> str:
 
 SCRIPT = """\
 #!/usr/bin/bash
-set -e
+set -e -o pipefail
 
 cd "{outdir}"
 
