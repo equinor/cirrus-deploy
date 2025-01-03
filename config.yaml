@@ -8,7 +8,7 @@ builds:
     version: 3.19.1
     src:
       type: git
-      url: git@github.com:petsc/petsc.git
+      url: https://github.com/petsc/petsc.git
       ref: a093114c2e7b4ba1f47e6ac8a72c57724150f16d
 
   - name: cirrus
