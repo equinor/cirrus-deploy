@@ -110,20 +110,20 @@ class Package:
             print(self.config.model_dump_json(), file=buildlog)
             print("------ BUILD  LOG ------", file=buildlog)
 
-            success = asyncio.run(self._build(env, buildlog))
+            try:
+                asyncio.run(self._build(env, buildlog))
+            except BaseException as exc:
+                for i in range(1000):
+                    fail_path = self.storepath / f"fail-{self.fullname}-{i}"
+                    if not fail_path.exists():
+                        break
+                else:
+                    sys.exit(f"Could not move failed build at {self.out}")
 
-        if not success:
-            for i in range(1000):
-                fail_path = self.storepath / f"fail-{self.fullname}-{i}"
-                if not fail_path.exists():
-                    break
-            else:
-                sys.exit(f"Could not move failed build at {self.out}")
+                self.out.rename(fail_path)
+                sys.exit(f"Building {self.fullname} failed with exception {exc}. See failed build at: {fail_path}")
 
-            self.out.rename(fail_path)
-            sys.exit(f"Building {self.fullname} failed. See failed build at: {fail_path}")
-
-    async def _build(self, env: dict[str, str], buildlog: Any) -> bool:
+    async def _build(self, env: dict[str, str], buildlog: Any) -> None:
         cwd = self.src if self.src.is_dir() else Path("/tmp")
 
         proc = await asyncio.create_subprocess_exec(
@@ -140,7 +140,7 @@ class Package:
             redirect_output(self.config.name, proc.stderr, sys.stderr, buildlog),
         )
 
-        return proc.returncode == 0
+        assert proc.returncode == 0
 
     @cached_property
     def manifest(self) -> str:
