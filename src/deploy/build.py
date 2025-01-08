@@ -82,7 +82,7 @@ class Package:
 
         if gitconf.ssh_key_path is not None:
             env["GIT_SSH_COMMAND"] = (
-               f"{os.environ.get('GIT_SSH_COMMAND', 'ssh')} -i {gitconf.ssh_key_path}"
+                f"{os.environ.get('GIT_SSH_COMMAND', 'ssh')} -i {gitconf.ssh_key_path.absolute()}"
             )
 
         def git(*args: str | Path) -> None:
