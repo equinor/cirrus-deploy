@@ -12,6 +12,7 @@ class GitConfig(BaseModel):
     type: Literal["git"]
     url: str
     ref: str
+    ssh_key_path: Path | None
 
 
 class FileConfig(BaseModel):

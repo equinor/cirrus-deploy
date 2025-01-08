@@ -78,8 +78,15 @@ class Package:
         except FileExistsError:
             return
 
+        env = os.environ.copy()
+
+        if gitconf.ssh_key_path is not None:
+            env["GIT_SSH_COMMAND"] = (
+               f"{os.environ.get('GIT_SSH_COMMAND', 'ssh')} -i {gitconf.ssh_key_path}"
+            )
+
         def git(*args: str | Path) -> None:
-            subprocess.run(("git", *args), check=True, cwd=self.src)
+            subprocess.run(("git", *args), check=True, cwd=self.src, env=env)
 
         git("init", "-b", "main")
         git("remote", "add", "origin", gitconf.url)
