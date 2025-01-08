@@ -23,7 +23,7 @@ class FileConfig(BaseModel):
 class BuildConfig(BaseModel):
     name: str
     version: str
-    src: GitConfig | FileConfig
+    src: GitConfig | FileConfig = Field(discriminator="type")
     depends: list[str] = Field(default_factory=list)
 
 
