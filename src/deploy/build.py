@@ -101,7 +101,12 @@ class Package:
             return
 
         print(f"Building {self.fullname}...")
-        self.checkout()
+        try:
+            self.checkout()
+        except BaseException:
+            shutil.rmtree(self.src)
+            shutil.rmtree(self.out)
+            raise
 
         env = {
             **os.environ,
