@@ -4,8 +4,16 @@ paths:
   store: versions/.store
 
 builds:
+  - name: mpich
+    version: 4.1.1
+    src:
+      type: git
+      url: https://github.com/pmodels/mpich
+      ref: bf60276b8515ea4be25d9f4ced92e20d7a28d1e1
+
   - name: petsc
     version: 3.19.1
+    depends: [ mpich ]
     src:
       type: git
       url: https://github.com/petsc/petsc.git
@@ -13,7 +21,7 @@ builds:
 
   - name: cirrus
     version: 1.9.2
-    depends: [ petsc ]
+    depends: [ mpich, petsc ]
     src:
       type: git
       url: git@github.com:equinor/cirrus.git
@@ -21,7 +29,7 @@ builds:
 
   - name: pflotran
     version: 1.8.12
-    depends: [ petsc ]
+    depends: [ mpich, petsc ]
     src:
       type: git
       url: https://bitbucket.org/opengosim/pflotran_ogs_1.8
