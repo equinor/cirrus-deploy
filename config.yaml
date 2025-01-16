@@ -12,12 +12,12 @@ builds:
       ref: a093114c2e7b4ba1f47e6ac8a72c57724150f16d
 
   - name: cirrus
-    version: 1.9.2
+    version: 1.9.3
     depends: [ petsc ]
     src:
       type: git
       url: git@github.com:equinor/cirrus.git
-      ref: c802022b034f868a5c033808c855a96c1233ff0d
+      ref: 7a437599c44b095ec942ca54454482576ce113e5
 
   - name: runcirrus
     version: 1.0.0
