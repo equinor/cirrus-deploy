@@ -3,6 +3,7 @@ import os
 from src import runcirrus
 import pytest
 
+
 def test_printversions_empty_folder(capsys, tmp_path, monkeypatch):
     monkeypatch.setenv("CIRRUS_VERSIONS_PATH", str(tmp_path))
     with pytest.raises(SystemExit):

@@ -407,9 +407,7 @@ def main() -> None:
         if rootdir.exists():
             break
     else:
-        sys.exit(
-            f"Cirrus version '{version}' is not installed in {versions_path}"
-        )
+        sys.exit(f"Cirrus version '{version}' is not installed in {versions_path}")
 
     progname = "cirrus"
     if version and version.split(".") < ["1", "9"]:
