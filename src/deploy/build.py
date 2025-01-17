@@ -97,7 +97,10 @@ class Package:
         try:
             self.out.mkdir()
         except FileExistsError:
-            print(f"Ignoring {self.fullname}: Already built at {self.out}", file=sys.stderr)
+            print(
+                f"Ignoring {self.fullname}: Already built at {self.out}",
+                file=sys.stderr,
+            )
             return
 
         print(f"Building {self.fullname}...")
@@ -133,7 +136,9 @@ class Package:
                     sys.exit(f"Could not move failed build at {self.out}")
 
                 self.out.rename(fail_path)
-                sys.exit(f"Building {self.fullname} failed with exception {exc}. See failed build at: {fail_path}")
+                sys.exit(
+                    f"Building {self.fullname} failed with exception {exc}. See failed build at: {fail_path}"
+                )
 
     async def _build(self, env: dict[str, str], buildlog: Any) -> None:
         cwd = self.src if self.src.is_dir() else Path("/tmp")
