@@ -172,7 +172,18 @@ def get_versions_path() -> Path:
     if (path := os.environ.get("CIRRUS_VERSIONS_PATH")) is not None:
         return Path(path)
 
-    return Path(os.path.dirname(__file__)).parent / "versions"
+    search_path = Path(os.path.dirname(__file__)).resolve()
+
+    while search_path.name != "versions":
+        search_path = search_path.parent
+
+        if search_path.parent == search_path:
+            # Hit root
+            raise RuntimeError(
+                f"Not able to locate install location from {Path(os.path.dirname(__file__))}"
+            )
+
+    return search_path
 
 
 class PrintVersionAction(argparse.Action):
