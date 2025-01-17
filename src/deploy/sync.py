@@ -42,7 +42,7 @@ async def _sync(config: Config, system: bool) -> None:
     for path in chain([config.paths.store], (x.dest for x in config.envs)):
         tasks: list[asyncio.Task[None]] = []
         for area in config.areas:
-            task = asyncio.create_task(_sync_area(area, base / path))
+            task = asyncio.create_task(_sync_area(area, base / Path(str(path))))
             tasks.append(task)
 
         await asyncio.gather(*tasks)
