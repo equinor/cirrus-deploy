@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import Literal
+from typing import Annotated, Literal
 
 from pydantic import BaseModel, field_validator, Field
 from pathlib import Path
@@ -12,7 +12,7 @@ class GitConfig(BaseModel):
     type: Literal["git"]
     url: str
     ref: str
-    ssh_key_path: Path | None = None
+    ssh_key_path: Annotated[Path | None, Field(exclude=True)] = None
 
 
 class FileConfig(BaseModel):

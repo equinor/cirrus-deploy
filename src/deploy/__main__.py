@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import sys
 
 import click
 from pathlib import Path
@@ -68,10 +69,30 @@ def links() -> None:
     make_links(config, system=USE_SYSTEM)
 
 
-@cli.command(help="Run 'runcirrus' using the local installation")
+@cli.command(help="Run tests in ./deploy_tests using pytest")
 @click.argument("args", nargs=-1)
-def run(args: tuple[str, ...]) -> None:
-    os.execlp("/prog/pflotran/bin/_runcirrus", "/prog/pflotran/bin/_runcirrus", *args)
+def test(args: tuple[str, ...]) -> None:
+    import pytest
+
+    configpath = Path.cwd()
+    config = load_config(configpath)
+    builder = Build(configpath, config, system=USE_SYSTEM)
+
+    testpath = Path("./deploy_tests")
+    if not testpath.is_dir():
+        sys.exit(f"Test directory '{testpath}' doesn't exist or is not a directory")
+
+    newpath = ":".join(str(p.out / "bin") for p in builder.packages.values())
+    os.environ["PATH"] = f"{newpath}:{os.environ['PATH']}"
+
+    for package in builder.packages.values():
+        if not package.out.is_dir():
+            sys.exit(
+                f"{package.out} doesn't exist. Are you sure that '{package.fullname}' is installed?"
+            )
+
+    print(f"{os.environ['PATH']=}")
+    sys.exit(pytest.main([str(testpath), *args]))
 
 
 if __name__ == "__main__":
