@@ -187,15 +187,15 @@ class Build:
             for dep in build.depends:
                 graph.add_edge(dep, build.name)
 
-        self._packages: dict[str, Package] = {}
+        self.packages: dict[str, Package] = {}
         for node in nx.topological_sort(graph):
             build = buildmap[node]
-            self._packages[node] = Package(
+            self.packages[node] = Package(
                 configpath,
                 self.storepath,
                 self.cachepath,
                 build,
-                [self._packages[x] for x in build.depends],
+                [self.packages[x] for x in build.depends],
             )
 
         self._envs: list[tuple[str, str]] = [(e.name, e.dest) for e in config.envs]
@@ -205,12 +205,12 @@ class Build:
         self._build_envs()
 
     def _build_packages(self) -> None:
-        for pkg in self._packages.values():
+        for pkg in self.packages.values():
             pkg.build()
 
     def _build_envs(self) -> None:
         for name, dest in self._envs:
-            pkg = self._packages[name]
+            pkg = self.packages[name]
             path = self._get_build_path(self.base / dest, pkg)
             if path is None:
                 continue

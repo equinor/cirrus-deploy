@@ -1,0 +1,34 @@
+
+dimens
+10 10 3 /
+
+equals
+tops 2540.508 4* 1 1 /
+/
+
+equals
+dx    304.8 /
+dy    304.8 /
+dz    6.096 4* 1 1 /
+dz    9.144 4* 2 2 /
+dz    15.24 4* 3 3 /
+poro  0.3   4* 1 3 /
+permx 500.0 4* 1 1 /
+permx 50.0  4* 2 2 /
+permx 200.0 4* 3 3 /
+/
+
+copy
+permx permy /
+permx permz /
+/
+
+multiply
+permz 0.2  4* 1 1 /
+permz 0.75 4* 2 2 /
+/
+
+equals
+permz 15.625 4* 3 3 /
+/
+
