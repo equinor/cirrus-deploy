@@ -90,6 +90,7 @@ def test(args: tuple[str, ...]) -> None:
             sys.exit(
                 f"{package.out} doesn't exist. Are you sure that '{package.fullname}' is installed?"
             )
+        os.environ[f"{package.config.name}_version"] = package.config.version
 
     print(f"{os.environ['PATH']=}")
     sys.exit(pytest.main([str(testpath), *args]))

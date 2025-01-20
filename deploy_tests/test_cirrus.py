@@ -1,18 +1,36 @@
+import os
 import re
 from pathlib import Path
-from subprocess import check_output
+import subprocess
+import semver
 
 
 DATADIR = Path(__file__).parent / "data"
 
 
 def test_help() -> None:
-    output = check_output(["cirrus", "-help"])
+    output = subprocess.check_output(["cirrus", "-help"])
     assert b"Cirrus command line options:" in output
 
 
+def test_version() -> None:
+    proc = subprocess.run(["cirrus", "-cirrusin", "/dev/null"], stdout=subprocess.PIPE)
+
+    match = re.search(r"Cirrus (\d+\.\d+sv\d+)\n", proc.stdout.decode())
+    assert (
+        match
+    ), f"Version not found in the following cirrus output: {proc.stdout.decode()}"
+
+    # Get the version as set by `deploy test`
+    version = semver.Version.parse(os.environ["cirrus_version"])
+    expected_version = f"{version.major}.{version.minor}sv{version.patch}"
+    actual_version = match[1]
+
+    assert expected_version == actual_version
+
+
 def test_spe1(tmp_path, snapshot) -> None:
-    output = check_output(
+    output = subprocess.check_output(
         [
             "cirrus",
             "-cirrusin",
