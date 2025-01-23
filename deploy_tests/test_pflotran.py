@@ -9,20 +9,23 @@ DATADIR = Path(__file__).parent / "data"
 
 
 def test_help() -> None:
-    output = subprocess.check_output(["cirrus", "-help"])
-    assert b"Cirrus command line options:" in output
+    status = subprocess.run(["pflotran", "-help"], stdout=subprocess.PIPE)
+    assert status.returncode == 87
+    assert b"Options for all PETSc programs:" in status.stdout
 
 
 def test_version() -> None:
-    proc = subprocess.run(["cirrus", "-cirrusin", "/dev/null"], stdout=subprocess.PIPE)
+    proc = subprocess.run(
+        ["pflotran", "-pflotranin", "/dev/null"], stdout=subprocess.PIPE
+    )
 
-    match = re.search(r"Cirrus (\d+\.\d+sv\d+)\n", proc.stdout.decode())
+    match = re.search(r" Pflotran (\d+\.\d+sv\d+)\+\n", proc.stdout.decode())
     assert (
         match
-    ), f"Version not found in the following cirrus output: {proc.stdout.decode()}"
+    ), f"Version not found in the following pflotran output: {proc.stdout.decode()}"
 
     # Get the version as set by `deploy test`
-    version = semver.Version.parse(os.environ["cirrus_version"])
+    version = semver.Version.parse(os.environ["pflotran_version"])
     expected_version = f"{version.major}.{version.minor}sv{version.patch}"
     actual_version = match[1]
 
@@ -32,8 +35,8 @@ def test_version() -> None:
 def test_spe1(tmp_path, snapshot) -> None:
     output = subprocess.check_output(
         [
-            "cirrus",
-            "-cirrusin",
+            "pflotran",
+            "-pflotranin",
             DATADIR / "spe1.in",
             "-output_prefix",
             tmp_path / "spe1",
@@ -45,7 +48,7 @@ def test_spe1(tmp_path, snapshot) -> None:
 
     # Replace strings that change from run to run
     stdout = re.sub(
-        r"(Cirrus was compiled on:|Run completed, wall clock time =).*",
+        r"(Pflotran was compiled on:|Run completed, wall clock time =).*",
         r"\1 [PRUNED]",
         output.decode(),
     )

@@ -6,22 +6,16 @@ set -ex
 : "${petsc:?}"
 : "${src:?}"
 
-if ! [[ -f "$tmp/six-*-.whl" ]]
-then
-    python3 -m pip download -d "$tmp" six
-fi
-
 # --------------------------------------
-# Build Cirrus
+# Build Pflotran-OGS
 # --------------------------------------
-cd "$src/src/cirrus"
+cd "$src/src/pflotran"
 git reset --hard
 git clean -xdf
 
 export PETSC_DIR="$petsc"
 export PETSC_ARCH=
-export PYTHONPATH="$tmp/six-*-.whl"
 
-make cirrus
-make test
-install -D cirrus "$out/bin/cirrus"
+make UPDATE_PROVENANCE=0 pflotran
+make UPDATE_PROVENANCE=0 check
+install -D pflotran "$out/bin/pflotran"

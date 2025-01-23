@@ -1,0 +1,24 @@
+name: Full end-to-end test
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+    - name: Set up Python 3.11
+      uses: actions/setup-python@v3
+      with:
+        python-version: "3.11"
+    - name: Install dependencies
+      run: pip install .
+    - name: Build environment
+      run: deploy build
+    - name: Test environment
+      run: deploy test
+    - name: Make links
+      run: deploy links
