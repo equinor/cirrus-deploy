@@ -11,11 +11,19 @@ builds:
       url: https://github.com/petsc/petsc.git
       ref: a093114c2e7b4ba1f47e6ac8a72c57724150f16d
 
+  - name: pflotran
+    version: 1.8.12
+    depends: [ petsc ]
+    src:
+      type: git
+      url: https://bitbucket.org/opengosim/pflotran_ogs_1.8
+      ref: 9dda71eba27f4beef56a269d03037b6f3230578b
+
   - name: runcirrus
     version: 1.0.0
 
 envs:
-  - name: cirrus
+  - name: pflotran
     dest: versions
   - name: runcirrus
     dest: versions/runcirrus
