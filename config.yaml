@@ -11,14 +11,6 @@ builds:
       url: https://github.com/petsc/petsc.git
       ref: a093114c2e7b4ba1f47e6ac8a72c57724150f16d
 
-  - name: cirrus
-    version: 1.9.3
-    depends: [ petsc ]
-    src:
-      type: git
-      url: git@github.com:equinor/cirrus.git
-      ref: 7a437599c44b095ec942ca54454482576ce113e5
-
   - name: runcirrus
     version: 1.0.0
     src:
@@ -31,29 +23,8 @@ envs:
   - name: runcirrus
     dest: versions/runcirrus
 
-areas:
-  - name: Bergen
-    host: be-grid01.be.statoil.no
-  - name: Stavanger
-    host: st-grid01.st.statoil.no
-  - name: Trondheim
-    host: tr-grid01.tr.statoil.no
-  - name: S268 (Azure)
-    host: s268-lckm.s268.oc.equinor.com
-  - name: Houston, USA
-    host: hou-grid01.hou.statoil.no
-  - name: Rio, Brazil
-    host: rio-grid01.rio.statoil.no
-  - name: St.John's, Canada
-    host: stjohn-grid01.stjohn.statoil.no
-
 links:
   versions:
-    '1.9.2': '1.9.2-4'
-    '1.8.12': '1.8.12-2'
-    '1.9': '1.9.2'
-    '1.8': '1.8.12'
-    'stable': '1.9'
     'latest': '^'
   versions/runcirrus:
     'latest': '^'
