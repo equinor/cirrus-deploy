@@ -3,6 +3,8 @@ set -ex
 
 : "${out:?}"
 
+exit 1
+
 export PETSC_DIR=$PWD
 export PETSC_ARCH=gnu-c-opt
 

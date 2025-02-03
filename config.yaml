@@ -4,8 +4,15 @@ paths:
   store: versions/.store
 
 builds:
+  - name: mpich
+    version: 4.1.1
+    src:
+      type: archive
+      url: https://github.com/pmodels/mpich/releases/download/v4.1.1/mpich-4.1.1.tar.gz
+
   - name: petsc
     version: 3.19.1
+    depends: [ mpich ]
     src:
       type: git
       url: https://github.com/petsc/petsc.git

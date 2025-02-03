@@ -9,13 +9,52 @@ from contextlib import suppress
 from datetime import datetime
 from functools import cached_property
 from pathlib import Path
+import tarfile
+from tempfile import TemporaryDirectory, TemporaryFile
 from typing import Any
 import networkx as nx
 from itertools import chain
+from urllib.request import urlopen
 import shutil
 
-from deploy.config import BuildConfig, Config, FileConfig, GitConfig
+from deploy.config import ArchiveConfig, BuildConfig, Config, FileConfig, GitConfig
 from deploy.utils import redirect_output
+
+
+def _checkout_archive(src: Path, config: ArchiveConfig) -> None:
+    with TemporaryFile() as tmpfile, TemporaryDirectory() as tmpdir:
+        with urlopen(config.url) as stream:
+            shutil.copyfileobj(stream, tmpfile)
+
+        tmpfile.seek(0)
+        with tarfile.open(fileobj=tmpfile) as tar:
+            tar.extractall(tmpdir, filter="data")
+
+        # GitHub creates tarballs that contain a single directory. Move the contents of it one directory up.
+        tmp_path = Path(tmpdir)
+        if os.listdir(tmp_path) == [src.name]:
+            tmp_path /= src.name
+
+        for name in os.listdir(tmp_path):
+            shutil.move(tmp_path / name, src / name)
+
+
+def _checkout_git(src: Path, config: GitConfig) -> None:
+    env: dict[str, str] | None = None
+
+    if config.ssh_key_path is not None:
+        env = os.environ.copy()
+        env["GIT_SSH_COMMAND"] = (
+            f"{os.environ.get('GIT_SSH_COMMAND', 'ssh')} -i {config.ssh_key_path.absolute()}"
+        )
+
+    def git(*args: str | Path) -> None:
+        subprocess.run(("git", *args), check=True, cwd=self.src, env=env)
+
+    git("init", "-b", "main")
+    git("remote", "add", "origin", config.url)
+    git("fetch", "origin", config.ref)
+    git("checkout", "FETCH_HEAD")
 
 
 class Package:
@@ -45,10 +84,12 @@ class Package:
     def src(self) -> Path:
         if isinstance(self.config.src, GitConfig):
             return self.cachepath / f"{self.config.name}-{self.config.src.ref}.git"
+        elif isinstance(self.config.src, ArchiveConfig):
+            return self.cachepath / f"{self.config.name}-{self.config.version}"
         elif isinstance(self.config.src, FileConfig):
             return self.configpath / self.config.src.path
         else:
-            raise RuntimeError("Unknown self.config.src type")
+            raise NotImplementedError("Unknown self.config.src type")
 
     @property
     def builder(self) -> Path:
@@ -70,7 +111,8 @@ class Package:
         return h.hexdigest()
 
     def checkout(self) -> None:
-        if not isinstance(gitconf := self.config.src, GitConfig):
+        config = self.config.src
+        if isinstance(config, FileConfig):
             return
 
         try:
@@ -78,20 +120,12 @@ class Package:
         except FileExistsError:
             return
 
-        env = os.environ.copy()
-
-        if gitconf.ssh_key_path is not None:
-            env["GIT_SSH_COMMAND"] = (
-                f"{os.environ.get('GIT_SSH_COMMAND', 'ssh')} -i {gitconf.ssh_key_path.absolute()}"
-            )
-
-        def git(*args: str | Path) -> None:
-            subprocess.run(("git", *args), check=True, cwd=self.src, env=env)
-
-        git("init", "-b", "main")
-        git("remote", "add", "origin", gitconf.url)
-        git("fetch", "origin", gitconf.ref)
-        git("checkout", "FETCH_HEAD")
+        if isinstance(config, ArchiveConfig):
+            _checkout_archive(self.src, config)
+        elif isinstance(config, GitConfig):
+            _checkout_git(self.src, config)
+        else:
+            raise NotImplementedError()
 
     def build(self) -> None:
         try:
@@ -117,6 +151,10 @@ class Package:
             "src": str(self.src),
             "tmp": str(self.cachepath),
             "out": str(self.out),
+            "CFLAGS": "-O3",
+            "CXXFLAGS": "-O3",
+            "FFLAGS": "-O3",
+            "MAKEFLAGS": f"-j{os.cpu_count()}",
         }
         with open(self.out / "build.log", "w") as buildlog:
             print("Built with https://github.com/equinor/cirrus-deploy", file=buildlog)

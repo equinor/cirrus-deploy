@@ -8,11 +8,9 @@ import yaml
 from pydantic import DirectoryPath
 
 
-class GitConfig(BaseModel):
-    type: Literal["git"]
+class ArchiveConfig(BaseModel):
+    type: Literal["archive"]
     url: str
-    ref: str
-    ssh_key_path: Annotated[Path | None, Field(exclude=True)] = None
 
 
 class FileConfig(BaseModel):
@@ -20,10 +18,17 @@ class FileConfig(BaseModel):
     path: str
 
 
+class GitConfig(BaseModel):
+    type: Literal["git"]
+    url: str
+    ref: str
+    ssh_key_path: Annotated[Path | None, Field(exclude=True)] = None
+
+
 class BuildConfig(BaseModel):
     name: str
     version: str
-    src: GitConfig | FileConfig = Field(discriminator="type")
+    src: ArchiveConfig | FileConfig | GitConfig = Field(discriminator="type")
     depends: list[str] = Field(default_factory=list)
 
 
