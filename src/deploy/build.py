@@ -42,8 +42,10 @@ class Package:
         return self.storepath / f"{self.buildhash}-{self.fullname}"
 
     @property
-    def src(self) -> Path:
-        if isinstance(self.config.src, GitConfig):
+    def src(self) -> Path | None:
+        if self.config.src is None:
+            return None
+        elif isinstance(self.config.src, GitConfig):
             return self.cachepath / f"{self.config.name}-{self.config.src.ref}.git"
         elif isinstance(self.config.src, FileConfig):
             return self.configpath / self.config.src.path
@@ -61,7 +63,7 @@ class Package:
         h.update(self.config.model_dump_json().encode("utf-8"))
         h.update(self.builder.read_bytes())
 
-        if isinstance(self.config.src, FileConfig):
+        if isinstance(self.config.src, FileConfig) and self.src is not None:
             h.update(self.src.read_bytes())
 
         for p in self.depends:
@@ -70,7 +72,7 @@ class Package:
         return h.hexdigest()
 
     def checkout(self) -> None:
-        if not isinstance(gitconf := self.config.src, GitConfig):
+        if not isinstance(gitconf := self.config.src, GitConfig) or self.src is None:
             return
 
         try:
@@ -107,17 +109,21 @@ class Package:
         try:
             self.checkout()
         except BaseException:
-            shutil.rmtree(self.src)
+            if self.src is not None:
+                shutil.rmtree(self.src)
             shutil.rmtree(self.out)
             raise
 
         env = {
             **os.environ,
             **{x.config.name: str(x.out) for x in self.depends},
-            "src": str(self.src),
             "tmp": str(self.cachepath),
             "out": str(self.out),
         }
+
+        if self.src is not None:
+            env["src"] = str(self.src)
+
         with open(self.out / "build.log", "w") as buildlog:
             print("Built with https://github.com/equinor/cirrus-deploy", file=buildlog)
             print(f"Build date: {datetime.now()}", file=buildlog)
@@ -141,7 +147,7 @@ class Package:
                 )
 
     async def _build(self, env: dict[str, str], buildlog: Any) -> None:
-        cwd = self.src if self.src.is_dir() else Path("/tmp")
+        cwd = self.src if self.src is not None and self.src.is_dir() else Path("/tmp")
 
         proc = await asyncio.create_subprocess_exec(
             self.builder,

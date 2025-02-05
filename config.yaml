@@ -13,9 +13,6 @@ builds:
 
   - name: runcirrus
     version: 1.0.0
-    src:
-      type: file
-      path: src/runcirrus.py
 
 envs:
   - name: cirrus

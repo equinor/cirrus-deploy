@@ -2,6 +2,5 @@
 set -ex
 
 : "${out:?}"
-: "${src:?}"
 
-install -m 755 -D $src $out/bin/runcirrus
+install -m 755 -D $(dirname $0)/runcirrus.py $out/bin/runcirrus

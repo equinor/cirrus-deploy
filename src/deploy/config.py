@@ -23,7 +23,7 @@ class FileConfig(BaseModel):
 class BuildConfig(BaseModel):
     name: str
     version: str
-    src: GitConfig | FileConfig = Field(discriminator="type")
+    src: GitConfig | FileConfig | None = Field(None, discriminator="type")
     depends: list[str] = Field(default_factory=list)
 
 
@@ -62,7 +62,7 @@ class Config(BaseModel):
     paths: PathConfig
     builds: list[BuildConfig]
     envs: list[EnvConfig]
-    areas: list[AreaConfig]
+    areas: list[AreaConfig] = Field(default_factory=list)
     links: dict[str, dict[str, str]]
 
 
