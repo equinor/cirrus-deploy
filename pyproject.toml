@@ -5,7 +5,14 @@ description = "Scripts for building and deploying OpenGoSim Cirrus on Equinor pr
 authors = ["Zohar Malamant <ZOM@equinor.com>"]
 license = "GPLv3.0"
 readme = "README.md"
-packages = [{include="deploy", from="src"}]
+
+[[tool.poetry.packages]]
+include = "deploy"
+from = "src"
+
+[[tool.poetry.packages]]
+include = "runcirrus.py"
+from = "src"
 
 [tool.poetry.dependencies]
 python = "^3.11"
