@@ -1,6 +1,5 @@
 paths:
-  local_base: ~/cirrus
-  system_base: /prog/cirrus
+  base: /prog/cirrus
   store: versions/.store
 
 builds:

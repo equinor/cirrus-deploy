@@ -33,17 +33,8 @@ class EnvConfig(BaseModel):
 
 
 class PathConfig(BaseModel):
-    local_base: DirectoryPath
-    system_base: str
+    base: str
     store: Path
-
-    @field_validator("local_base", mode="before")
-    @classmethod
-    def _validate_base(cls, value: str) -> Path:
-        dir_ = Path(value).expanduser().resolve()
-        (dir_ / "versions" / ".store").mkdir(parents=True, exist_ok=True)
-        (dir_ / "bin").mkdir(parents=True, exist_ok=True)
-        return dir_
 
     @field_validator("store")
     @classmethod

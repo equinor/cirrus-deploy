@@ -9,10 +9,12 @@ from contextlib import suppress
 from datetime import datetime
 from functools import cached_property
 from pathlib import Path
-from typing import Any
+from typing import Any, final
 import networkx as nx
 from itertools import chain
 import shutil
+from reform import Bind
+import reform
 
 from deploy.config import BuildConfig, Config, FileConfig, GitConfig
 from deploy.utils import redirect_output
@@ -22,12 +24,14 @@ class Package:
     def __init__(
         self,
         configpath: Path,
+        stagingpath: Path,
         storepath: Path,
         cachepath: Path,
         config: BuildConfig,
         depends: list[Package],
     ) -> None:
         self.configpath = configpath
+        self.stagingpath = stagingpath
         self.storepath = storepath
         self.cachepath = cachepath
         self.config = config
@@ -38,8 +42,24 @@ class Package:
         return f"{self.config.name}-{self.config.version}"
 
     @property
+    def is_installed(self) -> bool:
+        return self.out.is_dir()
+
+    @property
     def out(self) -> Path:
         return self.storepath / f"{self.buildhash}-{self.fullname}"
+
+    @property
+    def staging_out(self) -> Path:
+        return self.stagingpath / f"{self.buildhash}-{self.fullname}"
+
+    @property
+    def dependency_out(self) -> Path:
+        return self.out if self.out.exists() else self.staging_out
+
+    @property
+    def already_built(self) -> bool:
+        return self.out.is_dir() or self.staging_out.is_dir()
 
     @property
     def src(self) -> Path:
@@ -49,6 +69,12 @@ class Package:
             return self.configpath / self.config.src.path
         else:
             raise RuntimeError("Unknown self.config.src type")
+
+    @property
+    def srcdir(self) -> Path:
+        src = self.src
+        return src if src.is_dir() else src.parent
+
 
     @property
     def builder(self) -> Path:
@@ -94,13 +120,8 @@ class Package:
         git("checkout", "FETCH_HEAD")
 
     def build(self) -> None:
-        try:
-            self.out.mkdir()
-        except FileExistsError:
-            print(
-                f"Ignoring {self.fullname}: Already built at {self.out}",
-                file=sys.stderr,
-            )
+        if self.already_built:
+            print(f"Ignoring {self.fullname}: Already built at {self.dependency_out}", file=sys.stderr)
             return
 
         print(f"Building {self.fullname}...")
@@ -108,12 +129,41 @@ class Package:
             self.checkout()
         except BaseException:
             shutil.rmtree(self.src)
-            shutil.rmtree(self.out)
             raise
 
+        self.staging_out.mkdir(parents=True, exist_ok=True)
+        setup = {
+            str(self.builder.parent): Bind(),
+            str(self.cachepath): Bind(allow_writes=True),
+            "/prog": Bind(empty=True),
+            str(self.srcdir): Bind(),
+            str(self.out): Bind(self.staging_out, allow_writes=False),
+            **{str(p.out): Bind(p.dependency_out) for p in self.depends},
+            "/": Bind(exclude="prog"),
+        }
+
+        try:
+            reform.call(setup, self._do_build)
+        except BaseException as exc:
+            for i in range(1000):
+                fail_path = self.stagingpath / f"fail-{self.fullname}-{i}"
+                if not fail_path.exists():
+                    break
+            else:
+                sys.exit(f"Could not move failed build at {self.out}")
+
+            self.staging_out.rename(fail_path)
+            sys.exit(
+                f"Building {self.fullname} failed with exception {exc}. See failed build at: {fail_path}"
+            )
+
+    def _do_build(self) -> None:
         env = {
             **os.environ,
             **{x.config.name: str(x.out) for x in self.depends},
+            "CFLAGS": "-O3",
+            "CXXFLAGS": "-O3",
+            "FFLAGS": "-O3",
             "src": str(self.src),
             "tmp": str(self.cachepath),
             "out": str(self.out),
@@ -125,20 +175,7 @@ class Package:
             print(self.config.model_dump_json(), file=buildlog)
             print("------ BUILD  LOG ------", file=buildlog)
 
-            try:
-                asyncio.run(self._build(env, buildlog))
-            except BaseException as exc:
-                for i in range(1000):
-                    fail_path = self.storepath / f"fail-{self.fullname}-{i}"
-                    if not fail_path.exists():
-                        break
-                else:
-                    sys.exit(f"Could not move failed build at {self.out}")
-
-                self.out.rename(fail_path)
-                sys.exit(
-                    f"Building {self.fullname} failed with exception {exc}. See failed build at: {fail_path}"
-                )
+            asyncio.run(self._build(env, buildlog))
 
     async def _build(self, env: dict[str, str], buildlog: Any) -> None:
         cwd = self.src if self.src.is_dir() else Path("/tmp")
@@ -165,18 +202,17 @@ class Package:
 
 
 class Build:
+    @final
     def __init__(
         self,
         configpath: Path,
         config: Config,
         *,
-        system: bool = False,
         force: bool = False,
     ) -> None:
         self.force = force
-        self.base = Path(
-            config.paths.system_base if system else config.paths.local_base
-        )
+        self.base = Path(config.paths.base)
+        self.stagingpath = Path("staging").resolve()
         self.storepath = self.base / config.paths.store
         self.cachepath = Path("tmp").resolve()
         buildmap = {x.name: x for x in config.builds}
@@ -192,6 +228,7 @@ class Build:
             build = buildmap[node]
             self.packages[node] = Package(
                 configpath,
+                self.stagingpath,
                 self.storepath,
                 self.cachepath,
                 build,

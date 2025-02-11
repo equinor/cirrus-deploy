@@ -36,8 +36,8 @@ async def _sync_area(area: AreaConfig, path: Path) -> None:
     )
 
 
-async def _sync(config: Config, system: bool) -> None:
-    base = Path(config.paths.system_base if system else config.paths.local_base)
+async def _sync(config: Config) -> None:
+    base = Path(config.paths.base)
 
     for path in chain([config.paths.store], (x.dest for x in config.envs)):
         tasks: list[asyncio.Task[None]] = []
@@ -48,5 +48,5 @@ async def _sync(config: Config, system: bool) -> None:
         await asyncio.gather(*tasks)
 
 
-def do_sync(config: Config, *, system: bool) -> None:
-    asyncio.run(_sync(config, system))
+def do_sync(config: Config) -> None:
+    asyncio.run(_sync(config))

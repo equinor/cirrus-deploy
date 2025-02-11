@@ -2,6 +2,7 @@
 tmp/
 result
 result-*
+staging/
 
 # Python
 .venv/

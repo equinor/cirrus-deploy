@@ -15,5 +15,6 @@
     libtool
     gfortran
     m4
+    flex
   ];
 }

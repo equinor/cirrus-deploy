@@ -7,9 +7,9 @@ export PETSC_DIR=$PWD
 export PETSC_ARCH=gnu-c-opt
 
 ./configure                                  \
-    --COPTFLAGS="-O3"                        \
-    --CXXOPTFLAGS="-O3"                      \
-    --FOPTFLAGS="-O3"                        \
+    --COPTFLAGS="$CFLAGS"                    \
+    --CXXOPTFLAGS="$CXXFLAGS"                \
+    --FOPTFLAGS="$FFLAGS"                    \
     --download-fblaslapack=yes               \
     --download-hdf5=yes                      \
     --download-hypre=yes                     \

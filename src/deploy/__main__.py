@@ -13,21 +13,9 @@ from deploy.check import do_check
 from deploy.sync import do_sync
 
 
-USE_SYSTEM: bool = False
-
-
 @click.group()
-@click.option(
-    "--system",
-    "-s",
-    is_flag=True,
-    help="Install to /prog/pflotran instead of ~/cirrus",
-    default=False,
-)
-def cli(system: bool) -> None:
-    global USE_SYSTEM
-
-    USE_SYSTEM = system
+def cli() -> None:
+    pass
 
 
 @cli.command(help="Check locations")
@@ -41,7 +29,7 @@ def check() -> None:
 def sync() -> None:
     configpath = Path.cwd()
     config = load_config(configpath)
-    do_sync(config, system=USE_SYSTEM)
+    do_sync(config)
 
 
 @cli.command(help="Build Cirrus and dependencies")
@@ -58,7 +46,7 @@ def build(force: bool) -> None:
 
     configpath = Path.cwd()
     config = load_config(configpath)
-    builder = Build(configpath, config, force=force, system=USE_SYSTEM)
+    builder = Build(configpath, config, force=force)
     builder.build()
 
 
@@ -66,7 +54,7 @@ def build(force: bool) -> None:
 def links() -> None:
     configpath = Path.cwd()
     config = load_config(configpath)
-    make_links(config, system=USE_SYSTEM)
+    make_links(config)
 
 
 @cli.command(help="Run tests in ./deploy_tests using pytest")
@@ -76,7 +64,7 @@ def test(args: tuple[str, ...]) -> None:
 
     configpath = Path.cwd()
     config = load_config(configpath)
-    builder = Build(configpath, config, system=USE_SYSTEM)
+    builder = Build(configpath, config)
 
     testpath = Path("./deploy_tests")
     if not testpath.is_dir():
