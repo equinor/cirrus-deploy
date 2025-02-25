@@ -31,4 +31,4 @@ jobs:
     - name: Typecheck with mypy
       run: poetry run mypy --strict src
     - name: Test with pytest
-      run: poetry run python -m pytest tests
+      run: poetry run pytest tests
