@@ -18,10 +18,14 @@ from deploy.config import BuildConfig, Config, FileConfig, GitConfig
 from deploy.utils import redirect_output
 
 
+SCRIPTS = Path(__file__).parent / "scripts"
+
+
 class Package:
     def __init__(
         self,
         configpath: Path,
+        extra_scripts: Path | None,
         storepath: Path,
         cachepath: Path,
         config: BuildConfig,
@@ -32,6 +36,7 @@ class Package:
         self.cachepath = cachepath
         self.config = config
         self.depends = depends
+        self.extra_scripts = extra_scripts
 
     @property
     def fullname(self) -> str:
@@ -54,7 +59,11 @@ class Package:
 
     @property
     def builder(self) -> Path:
-        return Path(__file__).parent / f"scripts/build_{self.config.name}.sh"
+        name = f"build_{self.config.name}.sh"
+        if self.extra_scripts is not None and (self.extra_scripts / name).is_file():
+            return self.extra_scripts / name
+        else:
+            return SCRIPTS / name
 
     @cached_property
     def buildhash(self) -> str:
@@ -176,6 +185,7 @@ class Build:
         configpath: Path,
         config: Config,
         *,
+        extra_scripts: Path | None = None,
         system: bool = False,
         force: bool = False,
     ) -> None:
@@ -198,6 +208,7 @@ class Build:
             build = buildmap[node]
             self.packages[node] = Package(
                 configpath,
+                extra_scripts,
                 self.storepath,
                 self.cachepath,
                 build,
