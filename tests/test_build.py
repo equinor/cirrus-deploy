@@ -1,5 +1,5 @@
-from src.deploy.build import Build
-from src.deploy.config import Config
+from deploy.build import Build
+from deploy.config import Config
 from pathlib import Path
 import pytest
 
@@ -24,17 +24,17 @@ def test_minimal_config(base_config):
 @pytest.mark.parametrize(
     "script_content,config_update,expected_hash",
     [
-        ("content", {}, "4810d7a46d77ed66ab7742ec30f3dbaf39465fed"),
-        ("different content", {}, "6e1442405bac72ea3360c8c05222a7b2ce89d2ab"),
+        ("content", {}, "e36260dc71ec23d2a4864cb91a6f4cf39a2382a8"),
+        ("different content", {}, "417c53f6642dacd630c04b68eafbf61cd71a5808"),
         (
             "content",
             {"version": "1.0"},
-            "b5808cd0ac9adcc5543ccbb49f77249bfadd957d",
+            "9071d31cc26091e45c4319fbf49523da9e9076e7",
         ),
         (
             "different content",
             {"version": "1.0"},
-            "0808eb99124bf80a3292f14ca7de219384a7464b",
+            "7e460cb3aec91689ced8ede10f73b5572781b2c9",
         ),
     ],
 )
@@ -46,7 +46,6 @@ def test_single_package(
         {
             "name": "A",
             "version": "0.0",
-            "src": {"type": "file", "path": "some"},
             "depends": [],
             **config_update,
         }
@@ -60,15 +59,28 @@ def test_single_package(
 
 
 @pytest.mark.parametrize(
-    "script_content_A,config_update_A,expected_hash_A,script_content_B,config_update_B,expected_hash_B",
+    "script_content_A,expected_hash_A,script_content_B,expected_hash_B",
     [
-        (
+        pytest.param(
             "content",
-            {},
-            "4810d7a46d77ed66ab7742ec30f3dbaf39465fed",
+            "e36260dc71ec23d2a4864cb91a6f4cf39a2382a8",
             "content",
-            {},
-            "f5d262be810ba18a81c63f416ab19cef1a6a6dd9",
+            "1a077b36665b28a8141efe3cae6c8a0f56a00b59",
+            id="Base test",
+        ),
+        pytest.param(
+            "changed content",
+            "b1193c02fb7e0a94012f5b6887f8186069dcb50c",
+            "content",
+            "c4b6e82573051e913a9f3d96577c62ec8d02a287",
+            id="Changes in A changes both hashes",
+        ),
+        pytest.param(
+            "content",
+            "e36260dc71ec23d2a4864cb91a6f4cf39a2382a8",
+            "changed content",
+            "80a25fcb95675671b025346aa92950518f461120",
+            id="Changes in B only changes B's hash",
         ),
     ],
 )
@@ -76,10 +88,8 @@ def test_package_dependency(
     tmp_path,
     base_config,
     script_content_A,
-    config_update_A,
     expected_hash_A,
     script_content_B,
-    config_update_B,
     expected_hash_B,
 ):
     (tmp_path / "build_A.sh").write_text(script_content_A)
@@ -88,16 +98,12 @@ def test_package_dependency(
         {
             "name": "A",
             "version": "0.0",
-            "src": {"type": "file", "path": "some"},
             "depends": [],
-            **config_update_A,
         },
         {
             "name": "B",
             "version": "0.0",
-            "src": {"type": "file", "path": "some"},
             "depends": ["A"],
-            **config_update_B,
         },
     ]
     config = Config.model_validate(base_config)
