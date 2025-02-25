@@ -32,11 +32,11 @@ class Package:
         depends: list[Package],
     ) -> None:
         self.configpath = configpath
+        self.extra_scripts = extra_scripts
         self.storepath = storepath
         self.cachepath = cachepath
         self.config = config
         self.depends = depends
-        self.extra_scripts = extra_scripts
 
     @property
     def fullname(self) -> str:
@@ -189,12 +189,12 @@ class Build:
         system: bool = False,
         force: bool = False,
     ) -> None:
-        self.force = force
-        self.base = Path(
+        self.force: bool = force
+        self.base: Path = Path(
             config.paths.system_base if system else config.paths.local_base
         )
-        self.storepath = self.base / config.paths.store
-        self.cachepath = Path("tmp").resolve()
+        self.storepath: Path = self.base / config.paths.store
+        self.cachepath: Path = Path("tmp").resolve()
         buildmap = {x.name: x for x in config.builds}
 
         graph: nx.DiGraph[str] = nx.DiGraph()
