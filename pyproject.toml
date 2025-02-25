@@ -29,6 +29,9 @@ types-networkx = "^3.3.0.20241009"
 [tool.poetry.scripts]
 deploy = "deploy.__main__:cli"
 
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+
 [build-system]
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
