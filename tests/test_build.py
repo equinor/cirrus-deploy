@@ -24,17 +24,31 @@ def test_minimal_config(base_config):
 @pytest.mark.parametrize(
     "script_content,config_update,expected_hash",
     [
-        ("content", {}, "e36260dc71ec23d2a4864cb91a6f4cf39a2382a8"),
-        ("different content", {}, "417c53f6642dacd630c04b68eafbf61cd71a5808"),
-        (
+        pytest.param("content", {}, "e36260dc71ec23d2a4864cb91a6f4cf39a2382a8"),
+        pytest.param(
+            "different content", {}, "417c53f6642dacd630c04b68eafbf61cd71a5808"
+        ),
+        pytest.param(
             "content",
             {"version": "1.0"},
             "9071d31cc26091e45c4319fbf49523da9e9076e7",
         ),
-        (
+        pytest.param(
             "different content",
             {"version": "1.0"},
             "7e460cb3aec91689ced8ede10f73b5572781b2c9",
+        ),
+        pytest.param(
+            "content",
+            {"src": {"type": "git", "url": "https://example.com", "ref": "abcdefg"}},
+            "29babb628169cbc393ded61e18ee8d4e906a3a34",
+            id="git source",
+        ),
+        pytest.param(
+            "content",
+            {"src": {"type": "file", "path": "build_A.sh"}},
+            "4881eaad3331c6285babfa160920db1d9cd19e35",
+            id="file source",
         ),
     ],
 )
@@ -52,7 +66,7 @@ def test_single_package(
     )
 
     config = Config.model_validate(base_config)
-    build = Build(Path("/dummy"), config, extra_scripts=tmp_path)
+    build = Build(tmp_path, config, extra_scripts=tmp_path)
     assert len(build.packages) == 1
     assert "A" in build.packages
     assert build.packages["A"].buildhash == expected_hash
