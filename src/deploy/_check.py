@@ -11,13 +11,13 @@ import argparse
 
 def get_unused_store_paths(store: Path, versions: Sequence[Path]) -> List[str]:
     used = {
-        path.replace("/prog/replace", "/prog/cirrus")
+        path.replace("/prog/pflotran", "/prog/cirrus")
         for vpath in versions
         for manifest in vpath.glob("*/manifest")
         for path in manifest.read_text().splitlines()
     }
 
-    available = {str(p) for p in store.glob("*")}
+    available = {str(p).replace("/prog/pflotran", "/prog/cirrus") for p in store.glob("*")}
     return list(sorted(available - used))
 
 
