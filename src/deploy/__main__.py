@@ -63,13 +63,26 @@ def sync() -> None:
     default=False,
     help="Force adding a new environment even if one already exists (rollback)",
 )
-def build(force: bool) -> None:
+@click.option(
+    "--extra_scripts",
+    help="Directory containing additional build scripts for the packages",
+    default="",
+)
+def build(force: bool, extra_scripts: str) -> None:
     tmp_path = Path("tmp").resolve()
     tmp_path.mkdir(parents=True, exist_ok=True)
-
+    extra_scripts_path = (
+        Path(extra_scripts).resolve() if len(extra_scripts) > 0 else None
+    )
     configpath = Path.cwd()
     config = load_config(configpath)
-    builder = Build(configpath, config, force=force, system=Args.use_system)
+    builder = Build(
+        configpath,
+        config,
+        extra_scripts=extra_scripts_path,
+        force=force,
+        system=Args.use_system,
+    )
     builder.build()
 
 
