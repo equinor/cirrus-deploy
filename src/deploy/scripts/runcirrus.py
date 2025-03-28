@@ -45,61 +45,7 @@ import re
 import socket
 from pathlib import Path
 from dataclasses import dataclass
-from time import time
-
-
-EVENT_NAMESPACE = ""
-EVENT_HUB = ""
-SAS_KEY_NAME = ""
-SAS_KEY_VALUE = b""
-
-
-def az_create_sas_token(uri: str) -> str:
-    """Create SAS token to be able to interact with the Event Hub"""
-    import hmac
-    import urllib.parse
-    import base64
-
-    ttl = time() + 86400
-
-    quri = urllib.parse.quote_plus(uri)
-
-    sign_key = f"{quri}\n{int(ttl)}".encode("utf-8")
-    signature = base64.b64encode(
-        hmac.new(SAS_KEY_VALUE, sign_key, "sha256").digest()
-    ).decode("utf-8")
-    qsig = urllib.parse.quote(signature)
-    token = (
-        f"SharedAccessSignature sr={quri}&sig={qsig}&se={int(ttl)}&skn={SAS_KEY_NAME}"
-    )
-    return token
-
-
-def az_send_event(data: dict[str, Any]) -> None:
-    """Send data to Microsoft Azure Event Hub"""
-    if not all([EVENT_NAMESPACE, EVENT_HUB, SAS_KEY_NAME, SAS_KEY_VALUE]):
-        return
-
-    import http.client
-    import json
-
-    uri = f"https://{EVENT_NAMESPACE}.servicebus.windows.net/{EVENT_HUB}/messages"
-    body = json.dumps(data)
-    headers = {
-        "Authorization": az_create_sas_token(uri),
-        "Content-Length": str(len(body)),
-        "Content-Type": "application/json",
-    }
-
-    conn = http.client.HTTPSConnection(f"{EVENT_NAMESPACE}.servicebus.windows.net")
-    conn.request("POST", f"/{EVENT_HUB}/messages", body=body, headers=headers)
-
-    if (resp := conn.getresponse()) and resp.status != 201:
-        print("Failure during logging:", file=sys.stderr)
-        print(f"HTTP Status: {resp.status} ({resp.reason})", file=sys.stderr)
-        print(resp.read(), file=sys.stderr)
-
-    conn.close()
+from _cirrus_logger import logger
 
 
 def anonymize_fqdn(fqdn: str) -> str:
@@ -433,7 +379,7 @@ def main() -> None:
         telemetry=args.telemetry,
     )
 
-    az_send_event(
+    logger.info(
         {
             "type": "runcirrus",
             "script": sys.argv[0],
