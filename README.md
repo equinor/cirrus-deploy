@@ -1,8 +1,7 @@
 Cirrus deployment scripts
 =========================
 
-These are the scripts for deploying OpenGoSim's Cirrus on-prem in Equinor. Our
-copy of the source is located at https://github.com/equinor/cirrus
+These are the scripts for deploying OpenGoSim's Cirrus on-prem in Equinor.
 
 ## Deploying
 
