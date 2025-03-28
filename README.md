@@ -17,3 +17,37 @@ The install procedure is done through the following commands:
 2. Run `pip install .` in root folder. The cli tool `deploy` has been installed (`deploy --help` for information)
 3. Run `deploy build` in order to start the build process.
 
+# Development Using Docker
+
+```bash
+git clone git@github.com:equinor/cirrus-deploy.git
+cd cirrus-deploy
+```
+
+The Dockerfile contains the required build tools in order to compile and run cirrus/pflotran.
+
+```bash
+docker build . -t cirrus
+```
+
+Run the docker image interactively. Consider including volume mounts to get test_data etc, and work on the files
+
+```bash
+docker run --rm -v $PWD:/work -v $PWD/_output:/root/cirrus -it cirrus
+```
+
+Now inside the docker image run the commands to build and install
+
+```bash
+deploy build
+deploy test
+deploy links
+```
+
+Set the path variable to the system path:
+
+```bash
+export CIRRUS_VERSIONS_PATH=/root/cirrus/versions
+```
+
+You should now have `runcirrus` in your path inside the docker container

@@ -10,6 +10,8 @@ RUN dnf -y install gcc-gfortran
 RUN dnf -y install git
 
 RUN python3.11 -m venv /tmp/deploy_env
+ENV PATH="/tmp/deploy_env/bin:$PATH"
+ENV VIRTUAL_ENV="/tmp/deploy_env"
 
 WORKDIR /work
 
@@ -24,8 +26,8 @@ RUN mkdir -p /root/.ssh/
 RUN ssh-keyscan github.com >> /root/.ssh/known_hosts
 RUN chmod 0700 /root/.ssh
 
-RUN /tmp/deploy_env/bin/pip install .
-RUN --mount=type=ssh /tmp/deploy_env/bin/deploy build
-RUN /tmp/deploy_env/bin/deploy links
+RUN pip install --upgrade pip
+RUN pip install poetry
+RUN poetry install
 
 ENTRYPOINT ["/bin/bash","-c", "source /tmp/deploy_env/bin/activate; bash"]
