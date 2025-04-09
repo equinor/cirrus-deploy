@@ -170,7 +170,7 @@ def get_versions_path() -> Path:
 
     """
     if (path := os.environ.get("CIRRUS_VERSIONS_PATH")) is not None:
-        return Path(path)
+        return Path(path).expanduser()
 
     search_path = Path(os.path.dirname(__file__)).resolve()
 
