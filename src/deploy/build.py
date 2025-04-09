@@ -217,6 +217,15 @@ class Build:
 
         self._envs: list[tuple[str, str]] = [(e.name, e.dest) for e in config.envs]
 
+        self._check_scripts_exist()
+
+    def _check_scripts_exist(self) -> None:
+        for package in self.packages.values():
+            if not package.builder.is_file() or not os.access(package.builder, os.X_OK):
+                sys.exit(
+                    f"Build script for package {package.config.name} ({package.builder.name}) wasn't found or it isn't executable"
+                )
+
     def build(self) -> None:
         self._build_packages()
         self._build_envs()

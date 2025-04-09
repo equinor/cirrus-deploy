@@ -1,3 +1,4 @@
+import re
 from deploy.build import Build
 from deploy.config import Config
 from pathlib import Path
@@ -56,6 +57,7 @@ def test_single_package(
     tmp_path, base_config, config_update, script_content, expected_hash
 ):
     (tmp_path / "build_A.sh").write_text(script_content)
+    (tmp_path / "build_A.sh").chmod(0o755)
     base_config["builds"].append(
         {
             "name": "A",
@@ -107,7 +109,9 @@ def test_package_dependency(
     expected_hash_B,
 ):
     (tmp_path / "build_A.sh").write_text(script_content_A)
+    (tmp_path / "build_A.sh").chmod(0o755)
     (tmp_path / "build_B.sh").write_text(script_content_B)
+    (tmp_path / "build_B.sh").chmod(0o755)
     base_config["builds"] = [
         {
             "name": "A",
@@ -125,3 +129,48 @@ def test_package_dependency(
     assert len(build.packages) == 2
     assert build.packages["A"].buildhash == expected_hash_A
     assert build.packages["B"].buildhash == expected_hash_B
+
+
+def test_build_script_validity(
+    tmp_path,
+    base_config,
+):
+    base_config["builds"] = [
+        {
+            "name": "A",
+            "version": "0.0",
+            "depends": [],
+        },
+        {
+            "name": "B",
+            "version": "0.0",
+            "depends": ["A"],
+        },
+    ]
+    config = Config.model_validate(base_config)
+
+    # Test that if no files are present, the first package will error
+    with pytest.raises(
+        SystemExit,
+        match=re.escape(
+            "Build script for package A (build_A.sh) wasn't found or it isn't executable"
+        ),
+    ):
+        _ = Build(Path("/dummy"), config, extra_scripts=tmp_path, prefix=tmp_path)
+
+    # Test that if both files exist, but only the first one is executable, we'll
+    # error on the second
+    (tmp_path / "build_A.sh").write_text("")
+    (tmp_path / "build_A.sh").chmod(0o755)
+    (tmp_path / "build_B.sh").write_text("")
+    with pytest.raises(
+        SystemExit,
+        match=re.escape(
+            "Build script for package B (build_B.sh) wasn't found or it isn't executable"
+        ),
+    ):
+        _ = Build(Path("/dummy"), config, extra_scripts=tmp_path, prefix=tmp_path)
+
+    # Check that the correct configuration is correct
+    (tmp_path / "build_B.sh").chmod(0o755)
+    Build(Path("/dummy"), config, extra_scripts=tmp_path, prefix=tmp_path)
