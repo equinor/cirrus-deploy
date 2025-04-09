@@ -72,8 +72,6 @@ def config(tmp_path: Path, git_foo: Git, git_bar: Git) -> Config:
 
     base_config = {
         "paths": {
-            "local_base": tmp_path / "output",
-            "system_base": "/dev/null",
             "store": "versions/.store",
         },
         "builds": [foo_config, bar_config],
@@ -85,11 +83,11 @@ def config(tmp_path: Path, git_foo: Git, git_bar: Git) -> Config:
 
 
 @pytest.fixture
-def build(config: Config) -> Build:
+def build(tmp_path: Path, config: Config) -> Build:
     return Build(
         Path("/dev/null"),
         config,
-        system=False,
         force=False,
         extra_scripts=DIR / "data/scripts",
+        prefix=tmp_path / "output",
     )

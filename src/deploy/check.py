@@ -16,10 +16,9 @@ class Collect(BaseModel):
 SCRIPT: bytes = (Path(__file__).parent / "_check.py").read_bytes()
 
 
-async def collect(config: Config, area: AreaConfig) -> Collect:
-    base = Path(config.paths.system_base)
-    store = base / config.paths.store
-    versions = [base / env.dest for env in config.envs]
+async def collect(config: Config, area: AreaConfig, prefix: Path) -> Collect:
+    store = prefix / config.paths.store
+    versions = [prefix / env.dest for env in config.envs]
 
     proc = await asyncio.create_subprocess_exec(
         "ssh",
@@ -42,14 +41,14 @@ async def collect(config: Config, area: AreaConfig) -> Collect:
     return Collect.model_validate(yaml.safe_load(stdout))
 
 
-async def _check(config: Config) -> None:
+async def _check(config: Config, prefix: Path) -> None:
     tasks: list[asyncio.Task[Collect]] = []
 
     if not config.areas:
         sys.exit("No areas specified in config.yaml")
 
     for area in config.areas:
-        task = asyncio.create_task(collect(config, area))
+        task = asyncio.create_task(collect(config, area, prefix))
         tasks.append(task)
 
     collected: dict[str, Collect] = {}
@@ -75,5 +74,5 @@ async def _check(config: Config) -> None:
         print(f"{path:<120} {which_str}")
 
 
-def do_check(config: Config) -> None:
-    asyncio.run(_check(config))
+def do_check(config: Config, *, prefix: Path) -> None:
+    asyncio.run(_check(config, prefix))
