@@ -7,7 +7,7 @@ import pytest
 @pytest.fixture
 def base_config(tmp_path):
     return {
-        "paths": {"local_base": tmp_path, "system_base": "", "store": Path()},
+        "paths": {"store": Path()},
         "builds": [],
         "envs": [],
         "areas": [],
@@ -15,9 +15,9 @@ def base_config(tmp_path):
     }
 
 
-def test_minimal_config(base_config):
+def test_minimal_config(tmp_path, base_config):
     config = Config.model_validate(base_config)
-    build = Build(Path("/dummy"), config)
+    build = Build(Path("/dummy"), config, prefix=tmp_path)
     assert build.packages == {}
 
 
@@ -66,7 +66,7 @@ def test_single_package(
     )
 
     config = Config.model_validate(base_config)
-    build = Build(tmp_path, config, extra_scripts=tmp_path)
+    build = Build(tmp_path, config, extra_scripts=tmp_path, prefix=tmp_path)
     assert len(build.packages) == 1
     assert "A" in build.packages
     assert build.packages["A"].buildhash == expected_hash
@@ -121,7 +121,7 @@ def test_package_dependency(
         },
     ]
     config = Config.model_validate(base_config)
-    build = Build(Path("/dummy"), config, extra_scripts=tmp_path)
+    build = Build(Path("/dummy"), config, extra_scripts=tmp_path, prefix=tmp_path)
     assert len(build.packages) == 2
     assert build.packages["A"].buildhash == expected_hash_A
     assert build.packages["B"].buildhash == expected_hash_B

@@ -17,7 +17,7 @@ from deploy.sync import do_sync
 @dataclass
 class _Args:
     config_dir: Path = Path()
-    use_system: bool = False
+    prefix: Path = Path()
 
 
 Args = _Args()
@@ -31,28 +31,28 @@ Args = _Args()
     default=".",
 )
 @click.option(
-    "--system",
-    "-s",
+    "--prefix",
+    "-p",
     is_flag=True,
-    help="Install to /prog/pflotran instead of ~/cirrus",
-    default=False,
+    help="Installation location",
+    default="~/cirrus",
 )
-def cli(config_dir: str, system: bool) -> None:
+def cli(config_dir: str, prefix: str) -> None:
     Args.config_dir = Path(config_dir).resolve()
-    Args.use_system = system
+    Args.prefix = Path(prefix).resolve()
 
 
 @cli.command(help="Check locations")
 def check() -> None:
     config = load_config(Path(Args.config_dir))
-    do_check(config)
+    do_check(config, prefix=Args.prefix)
 
 
 @cli.command(help="Synchronise all locations")
 def sync() -> None:
     configpath = Path.cwd()
     config = load_config(configpath)
-    do_sync(config, system=Args.use_system)
+    do_sync(config, prefix=Args.prefix)
 
 
 @cli.command(help="Build Cirrus and dependencies")
@@ -81,7 +81,7 @@ def build(force: bool, extra_scripts: str) -> None:
         config,
         extra_scripts=extra_scripts_path,
         force=force,
-        system=Args.use_system,
+        prefix=Args.prefix,
     )
     builder.build()
 
@@ -90,7 +90,7 @@ def build(force: bool, extra_scripts: str) -> None:
 def links() -> None:
     configpath = Path.cwd()
     config = load_config(configpath)
-    make_links(config, system=Args.use_system)
+    make_links(config, prefix=Args.prefix)
 
 
 @cli.command(help="Run tests in ./deploy_tests using pytest")
@@ -100,7 +100,7 @@ def test(args: tuple[str, ...]) -> None:
 
     configpath = Path.cwd()
     config = load_config(configpath)
-    builder = Build(configpath, config, system=Args.use_system)
+    builder = Build(configpath, config, prefix=Args.prefix)
 
     testpath = Path("./deploy_tests")
     if not testpath.is_dir():

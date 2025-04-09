@@ -45,15 +45,13 @@ def validate(base: Path) -> None:
             print(f"'{name}' links to '{target}' which doesn't exist!", file=sys.stderr)
 
 
-def make_links(config: Config, *, system: bool) -> None:
-    base = Path(config.paths.system_base if system else config.paths.local_base)
-
+def make_links(config: Config, *, prefix: Path) -> None:
     for subdir, links in config.links.items():
         for source, target in links.items():
-            path = base / subdir / source
+            path = prefix / subdir / source
             if target == "^":
-                target = get_latest(base / subdir)
+                target = get_latest(prefix / subdir)
             path.unlink(missing_ok=True)
             path.symlink_to(target)
 
-        validate(base / subdir)
+        validate(prefix / subdir)

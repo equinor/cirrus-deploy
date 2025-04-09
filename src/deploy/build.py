@@ -185,17 +185,17 @@ class Build:
         configpath: Path,
         config: Config,
         *,
+        prefix: Path,
         extra_scripts: Path | None = None,
-        system: bool = False,
         force: bool = False,
     ) -> None:
         self.force: bool = force
-        self.base: Path = Path(
-            config.paths.system_base if system else config.paths.local_base
-        )
-        self.storepath: Path = self.base / config.paths.store
+        self.prefix: Path = prefix
+        self.storepath: Path = prefix / config.paths.store
         self.cachepath: Path = Path("tmp").resolve()
         buildmap = {x.name: x for x in config.builds}
+
+        self.storepath.mkdir(parents=True, exist_ok=True)
 
         graph: nx.DiGraph[str] = nx.DiGraph()
         for build in config.builds:
@@ -228,7 +228,7 @@ class Build:
     def _build_envs(self) -> None:
         for name, dest in self._envs:
             pkg = self.packages[name]
-            path = self._get_build_path(self.base / dest, pkg)
+            path = self._get_build_path(self.prefix / dest, pkg)
             if path is None:
                 continue
             self._build_env_for_package(path, pkg)
