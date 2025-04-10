@@ -378,7 +378,7 @@ def main() -> None:
             argv.append(arg)
 
     args = parse_args(argv)
-    input_file = Path(args.input).resolve()
+    input_file = Path(args.input).expanduser().resolve()
     if not input_file.exists():
         sys.exit(f"Cirrus input file '{input_file}' does not exit!")
 
@@ -416,9 +416,9 @@ def main() -> None:
     num_tasks = args.num_machines * args.num_tasks_per_machine
 
     if args.output_directory:
-        outdir = Path(args.output_directory)
+        outdir = Path(args.output_directory).expanduser()
     else:
-        outdir = Path(args.input).parent
+        outdir = Path(args.input).expanduser().parent
 
     script = SCRIPT.format(
         root=rootdir,
