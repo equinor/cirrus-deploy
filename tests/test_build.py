@@ -3,6 +3,7 @@ from deploy.build import Build
 from deploy.config import Config
 from pathlib import Path
 import pytest
+from unittest.mock import patch
 
 
 @pytest.fixture
@@ -174,3 +175,51 @@ def test_build_script_validity(
     # Check that the correct configuration is correct
     (tmp_path / "build_B.sh").chmod(0o755)
     Build(Path("/dummy"), config, extra_scripts=tmp_path, prefix=tmp_path)
+
+
+@pytest.mark.parametrize(
+    "script_content,config_update",
+    [
+        pytest.param(
+            "content",
+            {"src": {"type": "git", "url": "https://example.com", "ref": "abcdefg"}},
+            id="git source",
+        ),
+    ],
+)
+def test_clean_package_cache_on_rebuild(
+    tmp_path, base_config, monkeypatch, config_update, script_content
+):
+    with patch("deploy.build.subprocess") as mocked_subprocess:
+        monkeypatch.setenv("XDG_CACHE_HOME", tmp_path)
+        (tmp_path / "build_A.sh").write_text(script_content)
+        (tmp_path / "build_A.sh").chmod(0o755)
+        base_config["builds"].append(
+            {
+                "name": "A",
+                "version": "0.0",
+                "depends": [],
+                **config_update,
+            }
+        )
+
+        config = Config.model_validate(base_config)
+        build = Build(tmp_path, config, extra_scripts=tmp_path, prefix=tmp_path)
+        pck = list(build.packages.values())[0]
+
+        pck.checkout()
+
+        # Checkout will use subpross run on the git command
+        # We verify that it first is called with git init
+        git_commands = [
+            call_args[0][0][1] for call_args in mocked_subprocess.run.call_args_list
+        ]
+        assert "init" in git_commands
+
+        pck.checkout()
+
+        # And when we do it again, we want a git clean
+        git_commands = [
+            call_args[0][0][1] for call_args in mocked_subprocess.run.call_args_list
+        ]
+        assert "clean" in git_commands
