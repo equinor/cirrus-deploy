@@ -84,11 +84,6 @@ class Package:
         if not isinstance(gitconf := self.config.src, GitConfig) or self.src is None:
             return
 
-        try:
-            self.src.mkdir(parents=True)
-        except FileExistsError:
-            return
-
         env = os.environ.copy()
 
         if gitconf.ssh_key_path is not None:
@@ -98,6 +93,13 @@ class Package:
 
         def git(*args: str | Path) -> None:
             subprocess.run(("git", *args), check=True, cwd=self.src, env=env)
+
+        try:
+            self.src.mkdir(parents=True)
+        except FileExistsError:
+            git("reset", "--hard")
+            git("clean", "-xdf")
+            return
 
         git("init", "-b", "main")
         git("remote", "add", "origin", gitconf.url)
