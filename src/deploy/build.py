@@ -194,7 +194,11 @@ class Build:
         self.force: bool = force
         self.prefix: Path = prefix
         self.storepath: Path = prefix / config.paths.store
-        self.cachepath = Path(os.environ.get("XDG_CACHE_HOME", Path.home() / ".cache"))
+        self.cachepath = (
+            Path(os.environ.get("XDG_CACHE_HOME", Path.home() / ".cache"))
+            / "cirrus-deploy"
+        )
+        self.cachepath.mkdir(exist_ok=True, parents=True)
         buildmap = {x.name: x for x in config.builds}
 
         self.storepath.mkdir(parents=True, exist_ok=True)
