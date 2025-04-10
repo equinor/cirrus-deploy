@@ -33,13 +33,12 @@ Args = _Args()
 @click.option(
     "--prefix",
     "-p",
-    is_flag=True,
     help="Installation location",
     default="~/cirrus",
 )
 def cli(config_dir: str, prefix: str) -> None:
-    Args.config_dir = Path(config_dir).resolve()
-    Args.prefix = Path(prefix).resolve()
+    Args.config_dir = Path(config_dir).expanduser().resolve()
+    Args.prefix = Path(prefix).expanduser().resolve()
 
 
 @cli.command(help="Check locations")
@@ -72,7 +71,7 @@ def build(force: bool, extra_scripts: str) -> None:
     tmp_path = Path("tmp").resolve()
     tmp_path.mkdir(parents=True, exist_ok=True)
     extra_scripts_path = (
-        Path(extra_scripts).resolve() if len(extra_scripts) > 0 else None
+        Path(extra_scripts).expanduser().resolve() if len(extra_scripts) > 0 else None
     )
     configpath = Path.cwd()
     config = load_config(configpath)
