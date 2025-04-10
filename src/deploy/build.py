@@ -192,7 +192,7 @@ class Build:
         self.force: bool = force
         self.prefix: Path = prefix
         self.storepath: Path = prefix / config.paths.store
-        self.cachepath: Path = Path("tmp").resolve()
+        self.cachepath = Path(os.environ.get("XDG_CACHE_HOME", Path.home() / ".cache"))
         buildmap = {x.name: x for x in config.builds}
 
         self.storepath.mkdir(parents=True, exist_ok=True)
