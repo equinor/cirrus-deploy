@@ -1,184 +1,119 @@
 from __future__ import annotations
 
 import asyncio
-import hashlib
 import os
 import subprocess
 import sys
 from contextlib import suppress
 from datetime import datetime
-from functools import cached_property
 from pathlib import Path
 from typing import Any
 import networkx as nx
 from itertools import chain
 import shutil
 
-from deploy.config import BuildConfig, Config, FileConfig, GitConfig
+from deploy.config import Config, GitConfig
+from deploy.package import Package
 from deploy.utils import redirect_output
 
 
-SCRIPTS = Path(__file__).parent / "scripts"
+def _checkout(pkg: Package) -> None:
+    if not isinstance(gitconf := pkg.config.src, GitConfig) or pkg.src is None:
+        return
 
+    env = os.environ.copy()
 
-class Package:
-    def __init__(
-        self,
-        configpath: Path,
-        extra_scripts: Path | None,
-        storepath: Path,
-        cachepath: Path,
-        config: BuildConfig,
-        depends: list[Package],
-    ) -> None:
-        self.configpath = configpath
-        self.extra_scripts = extra_scripts
-        self.storepath = storepath
-        self.cachepath = cachepath
-        self.config = config
-        self.depends = depends
-
-    @property
-    def fullname(self) -> str:
-        return f"{self.config.name}-{self.config.version}"
-
-    @property
-    def out(self) -> Path:
-        return self.storepath / f"{self.buildhash}-{self.fullname}"
-
-    @property
-    def src(self) -> Path | None:
-        if self.config.src is None:
-            return None
-        elif isinstance(self.config.src, GitConfig):
-            return self.cachepath / f"{self.config.name}-{self.config.src.ref}.git"
-        elif isinstance(self.config.src, FileConfig):
-            return self.configpath / self.config.src.path
-        else:
-            raise RuntimeError("Unknown self.config.src type")
-
-    @property
-    def builder(self) -> Path:
-        name = f"build_{self.config.name}.sh"
-        if self.extra_scripts is not None and (self.extra_scripts / name).is_file():
-            return self.extra_scripts / name
-        else:
-            return SCRIPTS / name
-
-    @cached_property
-    def buildhash(self) -> str:
-        h = hashlib.sha1(usedforsecurity=False)
-
-        h.update(self.config.model_dump_json().encode("utf-8"))
-        h.update(self.builder.read_bytes())
-
-        if isinstance(self.config.src, FileConfig) and self.src is not None:
-            h.update(self.src.read_bytes())
-
-        for p in self.depends:
-            h.update(p.buildhash.encode("utf-8"))
-
-        return h.hexdigest()
-
-    def checkout(self) -> None:
-        if not isinstance(gitconf := self.config.src, GitConfig) or self.src is None:
-            return
-
-        env = os.environ.copy()
-
-        if gitconf.ssh_key_path is not None:
-            env["GIT_SSH_COMMAND"] = (
-                f"{os.environ.get('GIT_SSH_COMMAND', 'ssh')} -i {gitconf.ssh_key_path.absolute()}"
-            )
-
-        def git(*args: str | Path) -> None:
-            subprocess.run(("git", *args), check=True, cwd=self.src, env=env)
-
-        try:
-            self.src.mkdir(parents=True)
-        except FileExistsError:
-            git("reset", "--hard")
-            git("clean", "-xdf")
-            return
-
-        git("init", "-b", "main")
-        git("remote", "add", "origin", gitconf.url)
-        git("fetch", "origin", gitconf.ref)
-        git("checkout", "FETCH_HEAD")
-
-    def build(self) -> None:
-        try:
-            self.out.mkdir()
-        except FileExistsError:
-            print(
-                f"Ignoring {self.fullname}: Already built at {self.out}",
-                file=sys.stderr,
-            )
-            return
-
-        print(f"Building {self.fullname}...")
-        try:
-            self.checkout()
-        except BaseException:
-            if self.src is not None:
-                shutil.rmtree(self.src)
-            shutil.rmtree(self.out)
-            raise
-
-        env = {
-            **os.environ,
-            **{x.config.name: str(x.out) for x in self.depends},
-            "tmp": str(self.cachepath),
-            "out": str(self.out),
-        }
-
-        if self.src is not None:
-            env["src"] = str(self.src)
-
-        with open(self.out / "build.log", "w") as buildlog:
-            print("Built with https://github.com/equinor/cirrus-deploy", file=buildlog)
-            print(f"Build date: {datetime.now()}", file=buildlog)
-            print("----- BUILD CONFIG -----", file=buildlog)
-            print(self.config.model_dump_json(), file=buildlog)
-            print("------ BUILD  LOG ------", file=buildlog)
-
-            try:
-                asyncio.run(self._build(env, buildlog))
-            except BaseException as exc:
-                for i in range(1000):
-                    fail_path = self.storepath / f"fail-{self.fullname}-{i}"
-                    if not fail_path.exists():
-                        break
-                else:
-                    sys.exit(f"Could not move failed build at {self.out}")
-
-                self.out.rename(fail_path)
-                sys.exit(
-                    f"Building {self.fullname} failed with exception {exc}. See failed build at: {fail_path}"
-                )
-
-    async def _build(self, env: dict[str, str], buildlog: Any) -> None:
-        cwd = self.src if self.src is not None and self.src.is_dir() else Path("/tmp")
-
-        proc = await asyncio.create_subprocess_exec(
-            self.builder,
-            cwd=cwd,
-            env=env,
-            stdout=asyncio.subprocess.PIPE,
-            stderr=asyncio.subprocess.PIPE,
+    if gitconf.ssh_key_path is not None:
+        env["GIT_SSH_COMMAND"] = (
+            f"{os.environ.get('GIT_SSH_COMMAND', 'ssh')} -i {gitconf.ssh_key_path.absolute()}"
         )
 
-        await asyncio.gather(
-            proc.wait(),
-            redirect_output(self.config.name, proc.stdout, sys.stdout, buildlog),
-            redirect_output(self.config.name, proc.stderr, sys.stderr, buildlog),
+    def git(*args: str | Path) -> None:
+        subprocess.run(("git", *args), check=True, cwd=pkg.src, env=env)
+
+    try:
+        pkg.src.mkdir(parents=True)
+    except FileExistsError:
+        git("reset", "--hard")
+        git("clean", "-xdf")
+        return
+
+    git("init", "-b", "main")
+    git("remote", "add", "origin", gitconf.url)
+    git("fetch", "origin", gitconf.ref)
+    git("checkout", "FETCH_HEAD")
+
+
+def _build(pkg: Package) -> None:
+    try:
+        pkg.out.mkdir()
+    except FileExistsError:
+        print(
+            f"Ignoring {pkg.fullname}: Already built at {pkg.out}",
+            file=sys.stderr,
         )
+        return
 
-        assert proc.returncode == 0
+    print(f"Building {pkg.fullname}...")
+    try:
+        _checkout(pkg)
+    except BaseException:
+        if pkg.src is not None:
+            shutil.rmtree(pkg.src)
+        shutil.rmtree(pkg.out)
+        raise
 
-    @cached_property
-    def manifest(self) -> str:
-        return "".join(sorted(f"{x.out}\n" for x in [*self.depends, self]))
+    env = {
+        **os.environ,
+        **{x.config.name: str(x.out) for x in pkg.depends},
+        "tmp": str(pkg.cachepath),
+        "out": str(pkg.out),
+    }
+
+    if pkg.src is not None:
+        env["src"] = str(pkg.src)
+
+    with open(pkg.out / "build.log", "w") as buildlog:
+        print("Built with https://github.com/equinor/cirrus-deploy", file=buildlog)
+        print(f"Build date: {datetime.now()}", file=buildlog)
+        print("----- BUILD CONFIG -----", file=buildlog)
+        print(pkg.config.model_dump_json(), file=buildlog)
+        print("------ BUILD  LOG ------", file=buildlog)
+
+        try:
+            asyncio.run(_async_build(pkg, env, buildlog))
+        except BaseException as exc:
+            for i in range(1000):
+                fail_path = pkg.storepath / f"fail-{pkg.fullname}-{i}"
+                if not fail_path.exists():
+                    break
+            else:
+                sys.exit(f"Could not move failed build at {pkg.out}")
+
+            pkg.out.rename(fail_path)
+            sys.exit(
+                f"Building {pkg.fullname} failed with exception {exc}. See failed build at: {fail_path}"
+            )
+
+
+async def _async_build(pkg: Package, env: dict[str, str], buildlog: Any) -> None:
+    cwd = pkg.src if pkg.src is not None and pkg.src.is_dir() else Path("/tmp")
+
+    proc = await asyncio.create_subprocess_exec(
+        pkg.builder,
+        cwd=cwd,
+        env=env,
+        stdout=asyncio.subprocess.PIPE,
+        stderr=asyncio.subprocess.PIPE,
+    )
+
+    await asyncio.gather(
+        proc.wait(),
+        redirect_output(pkg.config.name, proc.stdout, sys.stdout, buildlog),
+        redirect_output(pkg.config.name, proc.stderr, sys.stderr, buildlog),
+    )
+
+    assert proc.returncode == 0
 
 
 class Build:
@@ -238,7 +173,7 @@ class Build:
 
     def _build_packages(self) -> None:
         for pkg in self.packages.values():
-            pkg.build()
+            _build(pkg)
 
     def _build_envs(self) -> None:
         for name, dest in self._envs:

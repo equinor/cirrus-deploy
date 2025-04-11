@@ -4,6 +4,7 @@ from deploy.config import Config
 from pathlib import Path
 import pytest
 from unittest.mock import patch
+from deploy.build import _checkout
 
 
 @pytest.fixture
@@ -207,7 +208,7 @@ def test_clean_package_cache_on_rebuild(
         build = Build(tmp_path, config, extra_scripts=tmp_path, prefix=tmp_path)
         pck = list(build.packages.values())[0]
 
-        pck.checkout()
+        _checkout(pck)
 
         # Checkout will use subpross run on the git command
         # We verify that it first is called with git init
@@ -216,7 +217,7 @@ def test_clean_package_cache_on_rebuild(
         ]
         assert "init" in git_commands
 
-        pck.checkout()
+        _checkout(pck)
 
         # And when we do it again, we want a git clean
         git_commands = [
