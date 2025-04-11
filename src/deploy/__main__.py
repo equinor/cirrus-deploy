@@ -11,6 +11,7 @@ from deploy.build import Build
 from deploy.config import load_config
 from deploy.links import make_links
 from deploy.check import do_check
+from deploy.package_list import PackageList
 from deploy.sync import do_sync
 
 
@@ -99,21 +100,17 @@ def test(args: tuple[str, ...]) -> None:
 
     configpath = Path.cwd()
     config = load_config(configpath)
-    builder = Build(configpath, config, prefix=Args.prefix)
+    plist = PackageList(configpath, config, prefix=Args.prefix)
 
     testpath = Path("./deploy_tests")
     if not testpath.is_dir():
         sys.exit(f"Test directory '{testpath}' doesn't exist or is not a directory")
 
-    newpath = ":".join(str(p.out / "bin") for p in builder.packages.values())
+    newpath = ":".join(str(p.out / "bin") for p in plist.packages.values())
     os.environ["PATH"] = f"{newpath}:{os.environ['PATH']}"
 
-    for package in builder.packages.values():
-        if not package.out.is_dir():
-            sys.exit(
-                f"{package.out} doesn't exist. Are you sure that '{package.fullname}' is installed?"
-            )
-        os.environ[f"{package.config.name}_version"] = package.config.version
+    for pkg in plist.packages.values():
+        os.environ[f"{pkg.config.name}_version"] = pkg.config.version
 
     print(f"{os.environ['PATH']=}")
     sys.exit(pytest.main([str(testpath), *args]))

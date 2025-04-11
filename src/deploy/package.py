@@ -1,7 +1,8 @@
 from __future__ import annotations
 
+import os.path
 import hashlib
-from functools import cached_property
+from functools import cached_property, lru_cache
 from pathlib import Path
 
 from deploy.config import BuildConfig, FileConfig, GitConfig
@@ -10,20 +11,26 @@ from deploy.config import BuildConfig, FileConfig, GitConfig
 SCRIPTS = Path(__file__).parent / "scripts"
 
 
+@lru_cache
+def get_cache_path() -> Path:
+    path = Path(os.environ.get("XDG_CACHE_HOME", "~/.cache")).expanduser().resolve()
+    path /= "cirrus-deploy"
+    path.mkdir(exist_ok=True, parents=True)
+    return path
+
+
 class Package:
     def __init__(
         self,
         configpath: Path,
         extra_scripts: Path | None,
         storepath: Path,
-        cachepath: Path,
         config: BuildConfig,
         depends: list[Package],
     ) -> None:
         self.configpath = configpath
         self.extra_scripts = extra_scripts
         self.storepath = storepath
-        self.cachepath = cachepath
         self.config = config
         self.depends = depends
 
@@ -40,7 +47,7 @@ class Package:
         if self.config.src is None:
             return None
         elif isinstance(self.config.src, GitConfig):
-            return self.cachepath / f"{self.config.name}-{self.config.src.ref}.git"
+            return get_cache_path() / f"{self.config.name}-{self.config.src.ref}.git"
         elif isinstance(self.config.src, FileConfig):
             return self.configpath / self.config.src.path
         else:

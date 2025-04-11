@@ -8,12 +8,13 @@ from contextlib import suppress
 from datetime import datetime
 from pathlib import Path
 from typing import Any
-import networkx as nx
 from itertools import chain
+from tempfile import TemporaryDirectory
 import shutil
 
 from deploy.config import Config, GitConfig
 from deploy.package import Package
+from deploy.package_list import PackageList
 from deploy.utils import redirect_output
 
 
@@ -44,7 +45,7 @@ def _checkout(pkg: Package) -> None:
     git("checkout", "FETCH_HEAD")
 
 
-def _build(pkg: Package) -> None:
+def _build(pkg: Package, tmp: str) -> None:
     try:
         pkg.out.mkdir()
     except FileExistsError:
@@ -66,7 +67,7 @@ def _build(pkg: Package) -> None:
     env = {
         **os.environ,
         **{x.config.name: str(x.out) for x in pkg.depends},
-        "tmp": str(pkg.cachepath),
+        "tmp": tmp,
         "out": str(pkg.out),
     }
 
@@ -127,45 +128,17 @@ class Build:
         force: bool = False,
     ) -> None:
         self.force: bool = force
-        self.prefix: Path = prefix
-        self.storepath: Path = prefix / config.paths.store
-        self.cachepath = (
-            Path(os.environ.get("XDG_CACHE_HOME", Path.home() / ".cache"))
-            / "cirrus-deploy"
+        self.package_list = PackageList(
+            configpath,
+            config,
+            prefix=prefix,
+            extra_scripts=extra_scripts,
+            check_existence=False,
         )
-        self.cachepath.mkdir(exist_ok=True, parents=True)
-        buildmap = {x.name: x for x in config.builds}
 
-        self.storepath.mkdir(parents=True, exist_ok=True)
-
-        graph: nx.DiGraph[str] = nx.DiGraph()
-        for build in config.builds:
-            graph.add_node(build.name)
-            for dep in build.depends:
-                graph.add_edge(dep, build.name)
-
-        self.packages: dict[str, Package] = {}
-        for node in nx.topological_sort(graph):
-            build = buildmap[node]
-            self.packages[node] = Package(
-                configpath,
-                extra_scripts,
-                self.storepath,
-                self.cachepath,
-                build,
-                [self.packages[x] for x in build.depends],
-            )
-
-        self._envs: list[tuple[str, str]] = [(e.name, e.dest) for e in config.envs]
-
-        self._check_scripts_exist()
-
-    def _check_scripts_exist(self) -> None:
-        for package in self.packages.values():
-            if not package.builder.is_file() or not os.access(package.builder, os.X_OK):
-                sys.exit(
-                    f"Build script for package {package.config.name} ({package.builder.name}) wasn't found or it isn't executable"
-                )
+    @property
+    def packages(self) -> dict[str, Package]:
+        return self.package_list.packages
 
     def build(self) -> None:
         self._build_packages()
@@ -173,12 +146,13 @@ class Build:
 
     def _build_packages(self) -> None:
         for pkg in self.packages.values():
-            _build(pkg)
+            with TemporaryDirectory() as tmp:
+                _build(pkg, tmp)
 
     def _build_envs(self) -> None:
-        for name, dest in self._envs:
+        for name, dest in self.package_list.envs:
             pkg = self.packages[name]
-            path = self._get_build_path(self.prefix / dest, pkg)
+            path = self._get_build_path(self.package_list.prefix / dest, pkg)
             if path is None:
                 continue
             self._build_env_for_package(path, pkg)
