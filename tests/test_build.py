@@ -189,10 +189,9 @@ def test_build_script_validity(
     ],
 )
 def test_clean_package_cache_on_rebuild(
-    tmp_path, base_config, monkeypatch, config_update, script_content
+    tmp_path, base_config, config_update, script_content
 ):
     with patch("deploy.build.subprocess") as mocked_subprocess:
-        monkeypatch.setenv("XDG_CACHE_HOME", tmp_path)
         (tmp_path / "build_A.sh").write_text(script_content)
         (tmp_path / "build_A.sh").chmod(0o755)
         base_config["builds"].append(

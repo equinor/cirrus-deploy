@@ -52,7 +52,7 @@ def check() -> None:
 def sync() -> None:
     configpath = Path.cwd()
     config = load_config(configpath)
-    do_sync(config, prefix=Args.prefix)
+    do_sync(configpath, config, prefix=Args.prefix)
 
 
 @cli.command(help="Build Cirrus and dependencies")
