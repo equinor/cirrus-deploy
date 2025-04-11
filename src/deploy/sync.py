@@ -4,9 +4,9 @@ from __future__ import annotations
 import sys
 import asyncio
 from pathlib import Path
-from itertools import chain
 
 from deploy.config import Config, AreaConfig
+from deploy.package_list import PackageList
 from deploy.utils import redirect_output
 
 
@@ -36,15 +36,18 @@ async def _sync_area(area: AreaConfig, path: Path) -> None:
     )
 
 
-async def _sync(config: Config, prefix: Path) -> None:
-    for path in chain([config.paths.store], (x.dest for x in config.envs)):
+async def _sync(configpath: Path, config: Config, prefix: Path) -> None:
+    plist = PackageList(configpath, config, prefix=prefix)
+
+    # Copy over store locations
+    for pkg in plist.packages.values():
         tasks: list[asyncio.Task[None]] = []
         for area in config.areas:
-            task = asyncio.create_task(_sync_area(area, prefix / str(path)))
+            task = asyncio.create_task(_sync_area(area, pkg.out))
             tasks.append(task)
 
         await asyncio.gather(*tasks)
 
 
-def do_sync(config: Config, *, prefix: Path) -> None:
-    asyncio.run(_sync(config, prefix))
+def do_sync(configpath: Path, config: Config, *, prefix: Path) -> None:
+    asyncio.run(_sync(configpath, config, prefix))

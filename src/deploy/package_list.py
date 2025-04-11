@@ -17,6 +17,7 @@ class PackageList:
         *,
         prefix: Path,
         extra_scripts: Path | None = None,
+        check_scripts: bool = False,
         check_existence: bool = True,
     ) -> None:
         self.prefix: Path = prefix
@@ -44,7 +45,8 @@ class PackageList:
 
         self.envs: list[tuple[str, str]] = [(e.name, e.dest) for e in config.envs]
 
-        self._check_scripts_exist()
+        if check_scripts:
+            self._check_scripts_exist()
         if check_existence:
             self._check_existence()
 

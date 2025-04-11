@@ -133,6 +133,7 @@ class Build:
             config,
             prefix=prefix,
             extra_scripts=extra_scripts,
+            check_scripts=True,
             check_existence=False,
         )
 
