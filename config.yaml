@@ -20,8 +20,9 @@ builds:
   - name: runcirrus
     version: 1.0.0
     src:
-      type: git
-      url: https://github.com/equinor/runcirrus.git
+      type: github
+      owner: equinor
+      repo: runcirrus
       ref: 757559903905fd7bc0725c69382ca24efd53ade4
 
 
