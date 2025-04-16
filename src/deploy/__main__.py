@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+from dis import findlinestarts
 import os
+from subprocess import check_output
 import sys
 
 import click
@@ -8,11 +10,12 @@ from pathlib import Path
 from dataclasses import dataclass
 
 from deploy.build import Build
-from deploy.config import load_config
+from deploy.config import GitHubConfig, load_config
 from deploy.links import make_links
 from deploy.check import do_check
 from deploy.package_list import PackageList
 from deploy.sync import do_sync
+from deploy.update import do_update
 
 
 @dataclass
@@ -114,6 +117,15 @@ def test(args: tuple[str, ...]) -> None:
 
     print(f"{os.environ['PATH']=}")
     sys.exit(pytest.main([str(testpath), *args]))
+
+
+@cli.command(help="Update config.yaml")
+@click.argument("package")
+@click.argument("branch")
+@click.argument("new_version")
+def update(package: str, branch: str, new_version: str) -> None:
+    config = load_config(Args.config_dir)
+    do_update(config, package, branch, new_version)
 
 
 if __name__ == "__main__":
