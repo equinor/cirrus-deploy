@@ -24,6 +24,9 @@ class PackageList:
         self.storepath: Path = prefix / config.paths.store
         buildmap = {x.name: x for x in config.builds}
 
+        if extra_scripts is None and (configpath / "scripts").exists():
+            extra_scripts = configpath / "scripts"
+
         self.storepath.mkdir(parents=True, exist_ok=True)
 
         graph: nx.DiGraph[str] = nx.DiGraph()

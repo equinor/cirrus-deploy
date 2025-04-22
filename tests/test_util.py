@@ -70,13 +70,21 @@ async def test_complete_with_delay(capsys: pytest.CaptureFixture):
 
 async def test_complete_with_partial(capsys: pytest.CaptureFixture):
     async with make_stream() as stream:
-        stream.feed_data(b"Hello, ")
+        stream.feed_data(b"Input your SSH password: ")
         await asyncio.sleep(0)
-        assert capsys.readouterr() == ("", "")
+        assert capsys.readouterr() == ("label> Input your SSH password: \n", "")
 
-        stream.feed_data(b"world!\n")
+        stream.feed_eof()
+
+    # Nothing left to read
+    assert capsys.readouterr() == ("", "")
+
+
+async def test_carriage_return(capsys: pytest.CaptureFixture):
+    async with make_stream() as stream:
+        stream.feed_data(b"[1/2]\r[2/2]\n")
         await asyncio.sleep(0)
-        assert capsys.readouterr() == ("label> Hello, world!\n", "")
+        assert capsys.readouterr() == ("label> [1/2]\nlabel> [2/2]\n", "")
 
         stream.feed_eof()
 
