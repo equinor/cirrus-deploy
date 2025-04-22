@@ -1,10 +1,16 @@
-from datetime import datetime
+from difflib import unified_diff
+import io
+from pathlib import Path
 from subprocess import check_output
 import sys
 from typing_extensions import override
-from deploy.config import Config, GitHubConfig
 from pydantic import BaseModel
-import yaml
+from ruamel.yaml import YAML
+from rich.prompt import Confirm
+from rich.console import Console
+
+
+console = Console()
 
 
 class GitHubAuthor(BaseModel):
@@ -44,20 +50,7 @@ class GitHubBranch(BaseModel):
     commit: GitHubCommit
 
 
-def do_update(config: Config, package: str, branch: str, new_version: str) -> None:
-    for build in config.builds:
-        if build.name == package:
-            break
-    else:
-        sys.exit(
-            f"Unknown package '{package}'. Must be one of: {', '.join(x.name for x in config.builds)}"
-        )
-
-    src = build.src
-    assert src is not None
-    if not isinstance(src, GitHubConfig):
-        sys.exit(f"Don't know how to upgrade a '{src.type}' source")
-
+def get_branch_info(owner: str, repo: str, branch: str) -> GitHubBranch:
     stdout = check_output(
         [
             "gh",
@@ -66,15 +59,85 @@ def do_update(config: Config, package: str, branch: str, new_version: str) -> No
             "Accept: application/vnd.github+json",
             "-H",
             "X-GitHub-Api-Version: 2022-11-28",
-            f"/repos/{src.owner}/{src.repo}/branches/{branch}",
+            f"/repos/{owner}/{repo}/branches/{branch}",
         ]
     )
-    data = GitHubBranch.model_validate_json(stdout)
+    return GitHubBranch.model_validate_json(stdout)
+
+
+def update_config(content: str, package: str, branch: str, version: str | None) -> str:
+    yaml = YAML()
+    config = yaml.load(io.StringIO(content))
+
+    for build in config["builds"]:
+        if build["name"] == package:
+            break
+    else:
+        sys.exit(
+            f"Unknown package '{package}'. Must be one of: {', '.join(x.name for x in config.builds)}"
+        )
+
+    src = build["src"]
+    if src["type"] != "github":
+        sys.exit(f"Don't know how to upgrade a '{src['type']}' source")
+
+    data = get_branch_info(src["owner"], src["repo"], branch)
 
     print("Found commit:", file=sys.stderr)
     print(data.commit, file=sys.stderr)
 
-    build.version = new_version
-    src.ref = data.commit.sha
+    build["version"] = version
+    src["ref"] = data.commit.sha
 
-    yaml.dump(config.model_dump(), sys.stdout)
+    updated_content = io.StringIO()
+    yaml.dump(config, updated_content)
+    return updated_content.getvalue()
+
+
+def do_update(config_dir: Path, package: str, branch: str, version: str | None) -> None:
+    config_path = config_dir / "config.yaml"
+
+    yaml = YAML()
+    with open(config_path) as f:
+        config = yaml.load(f)
+
+    for build in config["builds"]:
+        if build["name"] == package:
+            break
+    else:
+        sys.exit(
+            f"Unknown package '{package}'. Must be one of: {', '.join(x.name for x in config.builds)}"
+        )
+
+    src = build["src"]
+    if src["type"] != "github":
+        sys.exit(f"Don't know how to upgrade a '{src['type']}' source")
+
+    data = get_branch_info(src["owner"], src["repo"], branch)
+
+    print("Found commit:", file=sys.stderr)
+    print(data.commit, file=sys.stderr)
+
+    pre = io.StringIO()
+    yaml.dump(config, pre)
+
+    build["version"] = version
+    src["ref"] = data.commit.sha
+
+    post = io.StringIO()
+    yaml.dump(config, post)
+
+    if pre.getvalue() == post.getvalue():
+        print("Already newest version.", file=sys.stderr)
+        sys.exit()
+
+    sys.stderr.writelines(
+        unified_diff(
+            pre.getvalue().splitlines(True),
+            post.getvalue().splitlines(True),
+            fromfile="config.yaml",
+            tofile="config.yaml",
+        )
+    )
+    if Confirm.ask("Is this ok?"):
+        config_path.write_text(post.getvalue())

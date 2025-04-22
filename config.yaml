@@ -2,38 +2,38 @@ paths:
   store: versions/.store
 
 builds:
-  - name: petsc
-    version: 3.19.1
-    src:
-      type: git
-      url: https://github.com/petsc/petsc.git
-      ref: a093114c2e7b4ba1f47e6ac8a72c57724150f16d
+- name: petsc
+  version: 3.19.1
+  src:
+    type: git
+    url: https://github.com/petsc/petsc.git
+    ref: a093114c2e7b4ba1f47e6ac8a72c57724150f16d
 
-  - name: pflotran
-    version: 1.8.12
-    depends: [ petsc ]
-    src:
-      type: git
-      url: https://bitbucket.org/opengosim/pflotran_ogs_1.8
-      ref: 9dda71eba27f4beef56a269d03037b6f3230578b
+- name: pflotran
+  version: 1.8.12
+  depends: [petsc]
+  src:
+    type: git
+    url: https://bitbucket.org/opengosim/pflotran_ogs_1.8
+    ref: 9dda71eba27f4beef56a269d03037b6f3230578b
 
-  - name: runcirrus
-    version: 1.0.0
-    src:
-      type: github
-      owner: equinor
-      repo: runcirrus
-      ref: 757559903905fd7bc0725c69382ca24efd53ade4
+- name: runcirrus
+  version: 1.8.0
+  src:
+    type: github
+    owner: equinor
+    repo: runcirrus
+    ref: 757559903905fd7bc0725c69382ca24efd53ade4
 
 
 envs:
-  - name: pflotran
-    dest: versions
-  - name: runcirrus
-    dest: versions/runcirrus
+- name: pflotran
+  dest: versions
+- name: runcirrus
+  dest: versions/runcirrus
 
 links:
   versions:
-    'latest': '^'
+    latest: ^
   versions/runcirrus:
-    'latest': '^'
+    latest: ^

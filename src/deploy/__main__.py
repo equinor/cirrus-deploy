@@ -121,11 +121,10 @@ def test(args: tuple[str, ...]) -> None:
 
 @cli.command(help="Update config.yaml")
 @click.argument("package")
-@click.argument("branch")
-@click.argument("new_version")
-def update(package: str, branch: str, new_version: str) -> None:
-    config = load_config(Args.config_dir)
-    do_update(config, package, branch, new_version)
+@click.argument("tag")
+@click.option("--version", "-v", required=False)
+def update(package: str, tag: str, version: str | None = None) -> None:
+    do_update(Args.config_dir, package, tag, version)
 
 
 if __name__ == "__main__":

@@ -7,17 +7,6 @@ from unittest.mock import patch
 from deploy.build import _checkout
 
 
-@pytest.fixture
-def base_config(tmp_path):
-    return {
-        "paths": {"store": Path()},
-        "builds": [],
-        "envs": [],
-        "areas": [],
-        "links": {},
-    }
-
-
 def test_minimal_config(tmp_path, base_config):
     config = Config.model_validate(base_config)
     build = Build(Path("/dummy"), config, prefix=tmp_path)
