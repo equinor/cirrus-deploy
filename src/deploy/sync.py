@@ -1,6 +1,9 @@
 from __future__ import annotations
 
-
+import io
+import os
+import shlex
+import subprocess
 import sys
 import asyncio
 from pathlib import Path
@@ -10,44 +13,176 @@ from deploy.package_list import PackageList
 from deploy.utils import redirect_output
 
 
-async def _ensure_dir(area: AreaConfig, path: Path) -> None:
-    proc = await asyncio.create_subprocess_exec(
-        "ssh", "-T", area.host, "--", "mkdir", "-p", path
-    )
-    await proc.wait()
+RSH: list[str] = [
+    "ssh",
+    "-q",
+    "-oBatchMode=yes",
+    "-oPasswordAuthentication=no",
+    "-oStrictHostKeyChecking=no",
+    "-oConnectTimeout=20",
+]
 
 
-async def _sync_area(area: AreaConfig, path: Path) -> None:
-    await _ensure_dir(area, path)
-    proc = await asyncio.create_subprocess_exec(
-        "rsync",
-        "-arv",
-        "--info=progress2",
-        f"{path}/",
-        f"{area.host}:{path}/",
-        stdout=asyncio.subprocess.PIPE,
-        stderr=asyncio.subprocess.PIPE,
-    )
+class Sync:
+    def __init__(
+        self, storepath: Path, plist: PackageList, *, dry_run: bool = False
+    ) -> None:
+        self._storepath: Path = storepath
+        self._dry_run: bool = dry_run
+        self._prefix = plist.prefix
 
-    await asyncio.gather(
-        proc.wait(),
-        redirect_output(area.name, proc.stdout, sys.stdout),
-        redirect_output(area.name, proc.stderr, sys.stderr),
-    )
+        self._store_paths: list[Path] = [pkg.out for pkg in plist.packages.values()]
+
+        self._env_paths: dict[str, list[Path]] = {
+            dest: [
+                path.parent
+                for path in (plist.prefix / dest).glob("*/manifest")
+                if not (path.parent).is_symlink()
+                if plist.packages[name].manifest == path.read_text()
+            ]
+            for name, dest in plist.envs
+        }
+
+        # Create symlinking script
+        self._post_script = io.StringIO()
+        self._post_script.write("set -euxo pipefail\n")
+        for _, dest in plist.envs:
+            self._post_script.write(f"mkdir -p {plist.prefix / dest}\n")
+            self._post_script.writelines(
+                f"ln -sfn {path} {os.readlink(path)}\n"
+                for path in (plist.prefix / dest).glob("*")
+                if path.is_symlink()
+                if (path / "manifest").is_file()
+            )
+
+    async def sync_to(self, area: AreaConfig) -> None:
+        # 1. Sync .store/
+        await self._rsync(area, self._store_paths, self._storepath, context=".store")
+
+        # 2. Sync environments (eg. versions/1.0.2-2)
+        for dest, paths in self._env_paths.items():
+            await self._rsync(area, paths, self._prefix / dest, context=dest)
+
+        # 3. Sync all symlinks
+        await self._bash(area, self._post_script.getvalue(), context="symlinks")
+
+    async def _bash(
+        self, area: AreaConfig, script: str, *, context: str | None = None
+    ) -> None:
+        await self._check_call(
+            area,
+            *RSH,
+            area.host,
+            "--",
+            "bash",
+            "-",
+            input=script,
+            context=context,
+        )
+
+    async def _rsync(
+        self,
+        area: AreaConfig,
+        paths: list[Path],
+        parent: Path,
+        *,
+        context: str | None = None,
+    ) -> None:
+        await self._check_call(
+            area,
+            "rsync",
+            "-a",
+            "--rsh",
+            shlex.join(RSH),
+            "--progress",
+            *paths,
+            self._format_dest_path(area, parent),
+            context=context,
+        )
+
+    async def _check_call(
+        self,
+        area: AreaConfig,
+        program: str | Path,
+        *args: str | Path,
+        input: str | None = None,
+        context: str | None = None,
+    ) -> None:
+        if self._dry_run:
+            print(f"{(program, *args)}", f"{input=}")
+            return
+
+        proc = await asyncio.create_subprocess_exec(
+            program,
+            *args,
+            stdin=asyncio.subprocess.PIPE,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
+            start_new_session=True,
+        )
+
+        assert proc.stdin is not None
+        if input is not None:
+            proc.stdin.write(input.encode())
+        proc.stdin.close()
+
+        stdout = io.StringIO()
+        stderr = io.StringIO()
+
+        await asyncio.gather(
+            proc.wait(),
+            redirect_output(
+                f"{area.name} {repr(context)}", proc.stdout, sys.stdout, stdout
+            ),
+            redirect_output(
+                f"{area.name} {repr(context)}", proc.stderr, sys.stderr, stderr
+            ),
+        )
+
+        returncode = await proc.wait()
+        if proc.returncode != 0:
+            raise subprocess.CalledProcessError(
+                returncode, (program, *args), stdout.getvalue(), stderr.getvalue()
+            )
+
+    @staticmethod
+    def _format_dest_path(area: AreaConfig, path: Path) -> str:
+        return f"{area.host}:{path}"
 
 
-async def _sync(configpath: Path, config: Config, prefix: Path) -> None:
-    plist = PackageList(configpath, config, prefix=prefix)
+async def _sync(
+    configpath: Path,
+    extra_scripts: Path | None,
+    config: Config,
+    prefix: Path,
+    no_async: bool,
+    dry_run: bool,
+) -> None:
+    plist = PackageList(configpath, config, extra_scripts=extra_scripts, prefix=prefix)
+    syncer = Sync(prefix / config.paths.store, plist, dry_run=dry_run)
 
-    # Copy over store locations
-    for pkg in plist.packages.values():
-        tasks: list[asyncio.Task[None]] = []
+    if no_async:
         for area in config.areas:
-            task = asyncio.create_task(_sync_area(area, pkg.out))
-            tasks.append(task)
+            await syncer.sync_to(area)
+        return
 
-        await asyncio.gather(*tasks)
+    results = await asyncio.gather(
+        *(syncer.sync_to(area) for area in config.areas), return_exceptions=True
+    )
+    for index, result in enumerate(results):
+        if not isinstance(result, BaseException):
+            continue
+        print(f"During syncing to {config.areas[index].name}:")
+        raise result
 
 
-def do_sync(configpath: Path, config: Config, *, prefix: Path) -> None:
-    asyncio.run(_sync(configpath, config, prefix))
+def do_sync(
+    configpath: Path,
+    extra_scripts: Path | None,
+    config: Config,
+    *,
+    prefix: Path,
+    no_async: bool = False,
+    dry_run: bool = False,
+) -> None:
+    asyncio.run(_sync(configpath, extra_scripts, config, prefix, no_async, dry_run))

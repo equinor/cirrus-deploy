@@ -49,10 +49,27 @@ def check() -> None:
 
 
 @cli.command(help="Synchronise all locations")
-def sync() -> None:
-    configpath = Path.cwd()
-    config = load_config(configpath)
-    do_sync(configpath, config, prefix=Args.prefix)
+@click.option(
+    "--no-async",
+    help="Don't deploy asynchronously",
+    is_flag=True,
+    default=False,
+)
+@click.option(
+    "--dry-run",
+    is_flag=True,
+    default=False,
+)
+def sync(no_async: bool, dry_run: bool) -> None:
+    config = load_config(Args.config_dir)
+    do_sync(
+        Args.config_dir,
+        None,
+        config,
+        prefix=Args.prefix,
+        no_async=no_async,
+        dry_run=dry_run,
+    )
 
 
 @cli.command(help="Build Cirrus and dependencies")
@@ -64,9 +81,9 @@ def sync() -> None:
     help="Force adding a new environment even if one already exists (rollback)",
 )
 @click.option(
-    "--extra_scripts",
+    "--extra-scripts",
     help="Directory containing additional build scripts for the packages",
-    default="",
+    default=None,
 )
 def build(force: bool, extra_scripts: str) -> None:
     tmp_path = Path("tmp").resolve()
@@ -74,10 +91,9 @@ def build(force: bool, extra_scripts: str) -> None:
     extra_scripts_path = (
         Path(extra_scripts).expanduser().resolve() if len(extra_scripts) > 0 else None
     )
-    configpath = Path.cwd()
-    config = load_config(configpath)
+    config = load_config(Args.config_dir)
     builder = Build(
-        configpath,
+        Args.config_dir,
         config,
         extra_scripts=extra_scripts_path,
         force=force,
