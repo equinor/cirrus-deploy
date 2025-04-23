@@ -23,6 +23,7 @@ async def _sync_area(area: AreaConfig, path: Path) -> None:
         "--info=progress2",
         f"{path}/",
         f"{area.host}:{path}/",
+        start_new_session=True
     )
     await proc.wait()
 
