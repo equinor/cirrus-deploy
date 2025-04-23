@@ -1,13 +1,11 @@
 from __future__ import annotations
 
 
-import sys
 import asyncio
 from pathlib import Path
 from itertools import chain
 
 from deploy.config import Config, AreaConfig
-from deploy.utils import redirect_output
 
 
 async def _ensure_dir(area: AreaConfig, path: Path) -> None:
@@ -25,25 +23,19 @@ async def _sync_area(area: AreaConfig, path: Path) -> None:
         "--info=progress2",
         f"{path}/",
         f"{area.host}:{path}/",
-        stdout=asyncio.subprocess.PIPE,
-        stderr=asyncio.subprocess.PIPE,
     )
+    await proc.wait()
 
-    await asyncio.gather(
-        proc.wait(),
-        redirect_output(area.name, proc.stdout, sys.stdout),
-        redirect_output(area.name, proc.stderr, sys.stderr),
-    )
 
 
 async def _sync(config: Config, prefix: Path) -> None:
     for path in chain([config.paths.store], (x.dest for x in config.envs)):
         tasks: list[asyncio.Task[None]] = []
         for area in config.areas:
+            print(f"syncing path {prefix/str(path)} to {area.name}")
             task = asyncio.create_task(_sync_area(area, prefix / str(path)))
-            tasks.append(task)
+            await task
 
-        await asyncio.gather(*tasks)
 
 
 def do_sync(config: Config, *, prefix: Path) -> None:
