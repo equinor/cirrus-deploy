@@ -53,5 +53,6 @@ def make_links(config: Config, *, prefix: Path) -> None:
                 target = get_latest(prefix / subdir)
             path.unlink(missing_ok=True)
             path.symlink_to(target)
+            print(f"Created symlink: {path} -> {target}")
 
         validate(prefix / subdir)
