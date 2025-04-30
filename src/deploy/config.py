@@ -13,6 +13,14 @@ class GitConfig(BaseModel):
     ssh_key_path: Annotated[Path | None, Field(exclude=True)] = None
 
 
+class GitHubConfig(BaseModel):
+    type: Literal["github"]
+    owner: str
+    repo: str
+    ref: str
+    ssh_key_path: Annotated[Path | None, Field(exclude=True)] = None
+
+
 class FileConfig(BaseModel):
     type: Literal["file"]
     path: str
@@ -21,7 +29,9 @@ class FileConfig(BaseModel):
 class BuildConfig(BaseModel):
     name: str
     version: str
-    src: GitConfig | FileConfig | None = Field(None, discriminator="type")
+    src: GitConfig | GitHubConfig | FileConfig | None = Field(
+        None, discriminator="type"
+    )
     depends: list[str] = Field(default_factory=list)
 
 
