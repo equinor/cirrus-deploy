@@ -25,11 +25,17 @@ RSH: list[str] = [
 
 class Sync:
     def __init__(
-        self, storepath: Path, plist: PackageList, *, dry_run: bool = False
+        self,
+        storepath: Path,
+        plist: PackageList,
+        *,
+        dry_run: bool = False,
+        dest_prefix: Path | None = None,
     ) -> None:
         self._storepath: Path = storepath
         self._dry_run: bool = dry_run
         self._prefix = plist.prefix
+        dest_prefix = dest_prefix or plist.prefix
 
         self._store_paths: list[Path] = [pkg.out for pkg in plist.packages.values()]
 
@@ -47,9 +53,9 @@ class Sync:
         self._post_script = io.StringIO()
         self._post_script.write("set -euxo pipefail\n")
         for _, dest in plist.envs:
-            self._post_script.write(f"mkdir -p {plist.prefix / dest}\n")
+            self._post_script.write(f"mkdir -p {dest_prefix / dest}\n")
             self._post_script.writelines(
-                f"ln -sfn {path} {os.readlink(path)}\n"
+                f"ln -sfn {os.readlink(path)} {dest_prefix/path.relative_to(plist.prefix)} \n"
                 for path in (plist.prefix / dest).glob("*")
                 if path.is_symlink()
                 if (path / "manifest").is_file()
@@ -155,11 +161,14 @@ async def _sync(
     extra_scripts: Path | None,
     config: Config,
     prefix: Path,
+    dest_prefix: Path | None,
     no_async: bool,
     dry_run: bool,
 ) -> None:
     plist = PackageList(configpath, config, extra_scripts=extra_scripts, prefix=prefix)
-    syncer = Sync(prefix / config.paths.store, plist, dry_run=dry_run)
+    syncer = Sync(
+        prefix / config.paths.store, plist, dry_run=dry_run, dest_prefix=dest_prefix
+    )
 
     if no_async:
         for area in config.areas:
@@ -182,7 +191,10 @@ def do_sync(
     config: Config,
     *,
     prefix: Path,
+    dest_prefix: Path | None = None,
     no_async: bool = False,
     dry_run: bool = False,
 ) -> None:
-    asyncio.run(_sync(configpath, extra_scripts, config, prefix, no_async, dry_run))
+    asyncio.run(
+        _sync(configpath, extra_scripts, config, prefix, dest_prefix, no_async, dry_run)
+    )

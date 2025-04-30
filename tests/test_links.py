@@ -56,3 +56,17 @@ def test_make_links_on_new_package_resolves_latest(tmp_path, base_config):
     assert os.path.realpath(tmp_path / "location/cool") == str(
         (tmp_path / "location" / "1.0.2")
     )
+
+
+def test_some(tmp_path, base_config):
+    base_config["links"] = {"location": {"1.0": "1.0.1"}}
+    config = Config.model_validate(base_config)
+
+    (tmp_path / "location" / "1.0.0").mkdir(parents=True)
+    (tmp_path / "location" / "1.0.1").mkdir(parents=True)
+
+    make_links(config, prefix=tmp_path)
+    assert os.path.islink(tmp_path / "location/1.0")
+    assert os.path.realpath(tmp_path / "location/1.0") == str(
+        (tmp_path / "location" / "1.0.1")
+    )
