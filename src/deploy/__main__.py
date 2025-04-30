@@ -60,11 +60,19 @@ def check() -> None:
     is_flag=True,
     default=False,
 )
-def sync(no_async: bool, dry_run: bool) -> None:
+@click.option(
+    "--extra-scripts",
+    help="Directory containing additional build scripts for the packages",
+    default=None,
+)
+def sync(no_async: bool, dry_run: bool, extra_scripts: str) -> None:
     config = load_config(Args.config_dir)
+    extra_scripts_path = (
+        Path(extra_scripts).expanduser().resolve() if len(extra_scripts) > 0 else None
+    )
     do_sync(
         Args.config_dir,
-        None,
+        extra_scripts_path,
         config,
         prefix=Args.prefix,
         no_async=no_async,
