@@ -1,11 +1,12 @@
 import filecmp
+import os
 from subprocess import CalledProcessError
-
-from deploy.build import Build
-from deploy.config import Config
 from pathlib import Path
 import pytest
 
+from deploy.build import Build
+from deploy.config import Config
+from deploy.links import make_links
 from deploy.sync import do_sync
 
 BUILD_SCRIPT = """\
@@ -15,9 +16,11 @@ mkdir $out/bin
 echo "hello world">>$out/bin/a_file
 """
 
-
-async def async_no_op(*_args):
-    pass
+RSH = [
+    "python",
+    "-c",
+    "import sys, os; args = sys.argv[sys.argv.index('--')+1:]; os.execvp(args[0], args)",
+]
 
 
 def mocked_format_dest_path(area, path, dest):
@@ -31,17 +34,14 @@ def mocked_format_dest_path(area, path, dest):
     return dest
 
 
-def setup_fake_sync(monkeypatch: pytest.MonkeyPatch, destination: str) -> None:
+def setup_local_sync(monkeypatch: pytest.MonkeyPatch, destination: str) -> None:
     import deploy.sync
-
-    async def no_op(*args, **kwargs) -> None:
-        pass
 
     def format_dest_path(*_) -> str:
         return destination
 
     monkeypatch.setattr(deploy.sync.Sync, "_format_dest_path", format_dest_path)
-    monkeypatch.setattr(deploy.sync.Sync, "_bash", no_op)
+    monkeypatch.setattr(deploy.sync, "RSH", RSH)
 
 
 @pytest.fixture
@@ -51,13 +51,13 @@ def base_config(tmp_path):
         "builds": [
             {
                 "name": "A",
-                "version": "0.0",
+                "version": "0.0.0",
                 "depends": [],
             },
         ],
-        "envs": [],
-        "areas": [{"name": "test-destination", "host": "localhost"}],
-        "links": {},
+        "envs": [{"name": "A", "dest": "location"}],
+        "areas": [{"name": "destination", "host": "localhost"}],
+        "links": {"location": {"latest": "^"}},
     }
 
     (tmp_path / "build_A.sh").write_text(BUILD_SCRIPT)
@@ -66,17 +66,21 @@ def base_config(tmp_path):
     return config
 
 
-def _deploy_config(config, configpath):
-    builder = Build(configpath, config, extra_scripts=configpath, prefix=configpath)
+def _deploy_config(config, configpath, prefix=None):
+    builder = Build(
+        configpath, config, extra_scripts=configpath, prefix=prefix or configpath
+    )
     builder.build()
     return builder
 
 
 def test_successful_sync(tmp_path, monkeypatch, base_config):
     destination = tmp_path / "destination"
-    setup_fake_sync(monkeypatch, str(destination))
+    setup_local_sync(monkeypatch, str(destination))
 
     builder = _deploy_config(base_config, tmp_path)
+
+    make_links(base_config, prefix=tmp_path)
     pkg = builder.packages["A"]
     installed_file_path = pkg.out / "bin/a_file"
     assert installed_file_path.exists()
@@ -86,16 +90,18 @@ def test_successful_sync(tmp_path, monkeypatch, base_config):
         config=base_config,
         extra_scripts=tmp_path,
         prefix=tmp_path,
+        dest_prefix=destination,
     )
 
     synced_file_path = destination / pkg.out.name / "bin/a_file"
 
     assert filecmp.cmp(installed_file_path, synced_file_path, shallow=True)
+    assert os.path.islink(destination / "location/latest")
 
 
 def test_failing_sync(tmp_path, monkeypatch, base_config):
     """Try to sync to non existent area"""
-    setup_fake_sync(monkeypatch, "/non-existent/destination")
+    setup_local_sync(monkeypatch, "/non-existent/destination")
 
     _deploy_config(base_config, tmp_path)
     with pytest.raises(
