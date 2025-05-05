@@ -122,11 +122,10 @@ def links() -> None:
 def test(args: tuple[str, ...]) -> None:
     import pytest
 
-    configpath = Path.cwd()
-    config = load_config(configpath)
-    plist = PackageList(configpath, config, prefix=Args.prefix)
+    config = load_config(Args.config_dir)
+    plist = PackageList(Args.config_dir, config, prefix=Args.prefix)
 
-    testpath = Path("./deploy_tests")
+    testpath = Args.config_dir / "deploy_tests"
     if not testpath.is_dir():
         sys.exit(f"Test directory '{testpath}' doesn't exist or is not a directory")
 
@@ -135,6 +134,9 @@ def test(args: tuple[str, ...]) -> None:
 
     for pkg in plist.packages.values():
         os.environ[f"{pkg.config.name}_version"] = pkg.config.version
+
+    for name, dest in plist.envs:
+        os.environ[f"{name}_env"] = f"{Args.prefix / dest}"
 
     print(f"{os.environ['PATH']=}")
     sys.exit(pytest.main([str(testpath), *args]))
