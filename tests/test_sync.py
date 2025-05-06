@@ -7,7 +7,7 @@ import pytest
 from deploy.build import Build
 from deploy.config import Config
 from deploy.links import make_links
-from deploy.sync import do_sync
+from deploy.sync import Sync, do_sync, change_prefix
 
 BUILD_SCRIPT = """\
 #!/usr/bin/env bash
@@ -16,32 +16,20 @@ mkdir $out/bin
 echo "hello world">>$out/bin/a_file
 """
 
-RSH = [
-    "python",
-    "-c",
-    "import sys, os; args = sys.argv[sys.argv.index('--')+1:]; os.execvp(args[0], args)",
-]
 
+@pytest.fixture(autouse=True)
+def fake_ssh(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Override Sync's SSH command so that it doesn't use SSH, and instead
+    executes the command locally
 
-def mocked_format_dest_path(area, path, dest):
-    # Original function defines this as area.host:path, where area will be
-    # the same in both source and destination. We mock this setup and
-    # disregard the host (i.e. no ssh) and allow a different destination
-    # instead of source
-    # We wrap this function in a lambda that passes on dest (as that is
-    # not included in the original one. Similar behavoir as partial,
-    # without including functools
-    return dest
+    """
 
-
-def setup_local_sync(monkeypatch: pytest.MonkeyPatch, destination: str) -> None:
-    import deploy.sync
-
-    def format_dest_path(*_) -> str:
-        return destination
-
-    monkeypatch.setattr(deploy.sync.Sync, "_format_dest_path", format_dest_path)
-    monkeypatch.setattr(deploy.sync, "RSH", RSH)
+    # We replace RSH with an inline sh script. Both rsync and our `Sync._bash`
+    # set the first argument to be the destination hostname. The remainder is
+    # the command to execute on the "remote server". We simply execute it
+    # locally. Then, sh sets the next argument ("fake_ssh") to be the program
+    # name ($0), which is why we specify it.
+    monkeypatch.setattr(Sync, "RSH", ["/bin/sh", "-c", 'shift; exec "$@"', "fake_ssh"])
 
 
 @pytest.fixture
@@ -56,7 +44,7 @@ def base_config(tmp_path):
             },
         ],
         "envs": [{"name": "A", "dest": "location"}],
-        "areas": [{"name": "destination", "host": "localhost"}],
+        "areas": [{"name": "destination", "host": "example.com"}],
         "links": {"location": {"latest": "^"}},
     }
 
@@ -74,9 +62,40 @@ def _deploy_config(config, configpath, prefix=None):
     return builder
 
 
-def test_successful_sync(tmp_path, monkeypatch, base_config):
+@pytest.mark.parametrize(
+    "old_prefix, new_prefix, path, expectation",
+    [
+        pytest.param(
+            "/foo",
+            "/bar",
+            "/foo/file",
+            "/bar/file",
+            id="Simple",
+        ),
+        pytest.param(
+            "/some/prefix",
+            "/yet/another/new/prefix",
+            "/some/prefix/path/in/prefix",
+            "/yet/another/new/prefix/path/in/prefix",
+            id="Longer path",
+        ),
+        pytest.param("/foo", "/bar", "/bar/file", ValueError, id="Invalid prefix"),
+    ],
+)
+def test_change_prefix(old_prefix, new_prefix, path, expectation):
+    path = Path(path)
+    old_prefix = Path(old_prefix)
+    new_prefix = Path(new_prefix)
+
+    if isinstance(expectation, type) and issubclass(expectation, BaseException):
+        with pytest.raises(expectation):
+            change_prefix(path, old_prefix, new_prefix)
+    else:
+        assert change_prefix(path, old_prefix, new_prefix) == Path(expectation)
+
+
+def test_successful_sync(tmp_path, base_config):
     destination = tmp_path / "destination"
-    setup_local_sync(monkeypatch, str(destination))
 
     builder = _deploy_config(base_config, tmp_path)
 
@@ -99,18 +118,17 @@ def test_successful_sync(tmp_path, monkeypatch, base_config):
     assert os.path.islink(destination / "location/latest")
 
 
-def test_failing_sync(tmp_path, monkeypatch, base_config):
+def test_failing_sync(tmp_path, base_config):
     """Try to sync to non existent area"""
-    setup_local_sync(monkeypatch, "/non-existent/destination")
-
     _deploy_config(base_config, tmp_path)
     with pytest.raises(
         CalledProcessError,
-        match="'/non-existent/destination'\\)' returned non-zero exit status 11.",
+        match=r"'example.com:/non-existent/destination'\)' returned non-zero exit status 11.",
     ):
         do_sync(
             configpath=tmp_path,
             config=base_config,
             extra_scripts=tmp_path,
             prefix=tmp_path,
+            dest_prefix=Path("/non-existent/destination"),
         )
