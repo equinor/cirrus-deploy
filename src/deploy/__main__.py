@@ -68,7 +68,7 @@ def check() -> None:
 def sync(no_async: bool, dry_run: bool, extra_scripts: str) -> None:
     config = load_config(Args.config_dir)
     extra_scripts_path = (
-        Path(extra_scripts).expanduser().resolve() if len(extra_scripts) > 0 else None
+        Path(extra_scripts).expanduser().resolve() if extra_scripts else None
     )
     do_sync(
         Args.config_dir,

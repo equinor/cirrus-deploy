@@ -13,17 +13,20 @@ from deploy.package_list import PackageList
 from deploy.utils import redirect_output
 
 
-RSH: list[str] = [
-    "ssh",
-    "-q",
-    "-oBatchMode=yes",
-    "-oPasswordAuthentication=no",
-    "-oStrictHostKeyChecking=no",
-    "-oConnectTimeout=20",
-]
+def change_prefix(path: Path, old_prefix: Path, new_prefix: Path) -> Path:
+    return new_prefix / path.relative_to(old_prefix)
 
 
 class Sync:
+    RSH: list[str] = [
+        "ssh",
+        "-q",
+        "-oBatchMode=yes",
+        "-oPasswordAuthentication=no",
+        "-oStrictHostKeyChecking=no",
+        "-oConnectTimeout=20",
+    ]
+
     def __init__(
         self,
         storepath: Path,
@@ -35,7 +38,7 @@ class Sync:
         self._storepath: Path = storepath
         self._dry_run: bool = dry_run
         self._prefix = plist.prefix
-        dest_prefix = dest_prefix or plist.prefix
+        self._dest_prefix = dest_prefix or plist.prefix
 
         self._store_paths: list[Path] = [pkg.out for pkg in plist.packages.values()]
 
@@ -53,9 +56,9 @@ class Sync:
         self._post_script = io.StringIO()
         self._post_script.write("set -euxo pipefail\n")
         for _, dest in plist.envs:
-            self._post_script.write(f"mkdir -p {dest_prefix / dest}\n")
+            self._post_script.write(f"mkdir -p {self._dest_prefix / dest}\n")
             self._post_script.writelines(
-                f"ln -sfn {os.readlink(path)} {dest_prefix/path.relative_to(plist.prefix)} \n"
+                f"ln -sfn {os.readlink(path)} {change_prefix(path, plist.prefix, self._dest_prefix)} \n"
                 for path in (plist.prefix / dest).glob("*")
                 if path.is_symlink()
                 if (path / "manifest").is_file()
@@ -77,11 +80,9 @@ class Sync:
     ) -> None:
         await self._check_call(
             area,
-            *RSH,
+            *self.RSH,
             area.host,
-            "--",
             "bash",
-            "-",
             input=script,
             context=context,
         )
@@ -99,10 +100,10 @@ class Sync:
             "rsync",
             "-a",
             "--rsh",
-            shlex.join(RSH),
+            shlex.join(self.RSH),
             "--progress",
             *paths,
-            self._format_dest_path(area, parent),
+            f"{area.host}:{change_prefix(parent, self._prefix, self._dest_prefix)}",
             context=context,
         )
 
@@ -150,10 +151,6 @@ class Sync:
             raise subprocess.CalledProcessError(
                 returncode, (program, *args), stdout.getvalue(), stderr.getvalue()
             )
-
-    @staticmethod
-    def _format_dest_path(area: AreaConfig, path: Path) -> str:
-        return f"{area.host}:{path}"
 
 
 async def _sync(
