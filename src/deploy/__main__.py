@@ -97,7 +97,7 @@ def build(force: bool, extra_scripts: str) -> None:
     tmp_path = Path("tmp").resolve()
     tmp_path.mkdir(parents=True, exist_ok=True)
     extra_scripts_path = (
-        Path(extra_scripts).expanduser().resolve() if len(extra_scripts) > 0 else None
+        Path(extra_scripts).expanduser().resolve() if extra_scripts else None
     )
     config = load_config(Args.config_dir)
     builder = Build(
@@ -137,6 +137,13 @@ def test(args: tuple[str, ...]) -> None:
 
     for name, dest in plist.envs:
         os.environ[f"{name}_env"] = f"{Args.prefix / dest}"
+
+    for name, dest in plist.envs:
+        pkg = plist.packages[name]
+        for path in (plist.prefix / dest).glob("*/manifest"):
+            if path.read_text() == pkg.manifest:
+                os.environ[f"{name}_env_version"] = path.parent.name
+                break
 
     print(f"{os.environ['PATH']=}")
     sys.exit(pytest.main([str(testpath), *args]))
