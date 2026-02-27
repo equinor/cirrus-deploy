@@ -1,37 +1,43 @@
-[tool.poetry]
+[project]
 name = "cirrus-deploy"
-version = "0.1.0"
+version = "0.2.0"
 description = "Scripts for building and deploying OpenGoSim Cirrus on Equinor premises"
-authors = ["Zohar Malamant <ZOM@equinor.com>"]
-license = "GPLv3.0"
 readme = "README.md"
-packages = [{include="deploy", from="src"}]
+license = "GPL-3.0-or-later"
+authors = [{ name = "Zohar Malamant", email = "ZOM@equinor.com" }]
+requires-python = ">=3.11"
+dependencies = [
+  "click>=8.1.7",
+  "networkx>=3.3",
+  "pydantic>=2.9.2",
+  "pyyaml>=6.0.2",
+  "pytest-snapshot>=0.9.0",
+  "semver>=3.0.2",
+  "six>=1.16.0",
+]
 
-[tool.poetry.dependencies]
-python = "^3.11"
-click = "^8.1.7"
-pydantic = "^2.9.2"
-pyyaml = "^6.0.2"
-six = "^1.16.0"
-networkx = "^3.3"
-semver = "^3.0.2"
-poetry = "^2.0.1"
-pytest-snapshot = "^0.9.0"
+[dependency-groups]
+dev = [
+  "mypy>=1.11.2",
+  "pytest>=8.3.3",
+  "pytest-asyncio>=0.24.0",
+  "ruff>=0.6.8",
+  "types-networkx>=3.3.0.20241009",
+  "types-pyyaml>=6.0.12.20240917",
+]
 
-[tool.poetry.group.dev.dependencies]
-mypy = "^1.11.2"
-ruff = "^0.6.8"
-pytest = "^8.3.3"
-pytest-asyncio = "^0.24.0"
-types-pyyaml = "^6.0.12.20240917"
-types-networkx = "^3.3.0.20241009"
-
-[tool.poetry.scripts]
+[project.scripts]
 deploy = "deploy.__main__:cli"
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
 
 [build-system]
-requires = ["poetry-core"]
-build-backend = "poetry.core.masonry.api"
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/deploy"]
+
+[tool.uv]
+package = true

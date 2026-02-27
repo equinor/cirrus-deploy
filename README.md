@@ -12,8 +12,8 @@ The `config` file is a file that is sourced in other bash scripts, and so must
 follow bash syntax. It describes which sources to install where.
 
 The install procedure is done through the following commands:
-1. Create a python virtual environment (e.g. `python -m venv /path/to/venv`) and source it (`source /path/to/venv/bin/activate`)
-2. Run `pip install .` in root folder. The cli tool `deploy` has been installed (`deploy --help` for information)
+1. Install [uv](https://docs.astral.sh/uv/getting-started/installation/): the package manager that we use
+2. Run `uv sync` in root folder. The cli tool `deploy` has been installed (`deploy --help` for information)
 3. Run `deploy build` in order to start the build process.
 
 # Development Using Docker
