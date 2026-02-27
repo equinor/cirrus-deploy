@@ -20,9 +20,9 @@ def test_version() -> None:
     )
 
     match = re.search(r" Pflotran (\d+\.\d+sv\d+)\+\n", proc.stdout.decode())
-    assert (
-        match
-    ), f"Version not found in the following pflotran output: {proc.stdout.decode()}"
+    assert match, (
+        f"Version not found in the following pflotran output: {proc.stdout.decode()}"
+    )
 
     # Get the version as set by `deploy test`
     version = semver.Version.parse(os.environ["pflotran_version"])
