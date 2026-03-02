@@ -57,7 +57,7 @@ class PackageList:
         for package in self.packages.values():
             if not package.builder.is_file() or not os.access(package.builder, os.X_OK):
                 sys.exit(
-                    f"Build script for package {package.config.name} ({package.builder.name}) wasn't found or it isn't executable"
+                    f"Build script for package {package.config.name} ({package.builder.name}) wasn't found or it isn't executable.\nFile given: {package.builder}"
                 )
 
     def _check_existence(self) -> None:
