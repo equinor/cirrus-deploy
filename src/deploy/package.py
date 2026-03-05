@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import os.path
 import hashlib
 from functools import cached_property, lru_cache
 from pathlib import Path
@@ -13,8 +12,7 @@ SCRIPTS = Path(__file__).parent / "scripts"
 
 @lru_cache
 def get_cache_path() -> Path:
-    path = Path(os.environ.get("XDG_CACHE_HOME", "~/.cache")).expanduser().resolve()
-    path /= "cirrus-deploy"
+    path = Path("./output/cache").resolve()
     path.mkdir(exist_ok=True, parents=True)
     return path
 
