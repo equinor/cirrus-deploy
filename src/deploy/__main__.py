@@ -34,7 +34,7 @@ Args = _Args()
     "--prefix",
     "-p",
     help="Installation location",
-    default="~/cirrus",
+    default="./output/prefix",
 )
 def cli(config_dir: str, prefix: str) -> None:
     Args.config_dir = Path(config_dir).expanduser().resolve()
@@ -79,7 +79,7 @@ def sync(no_async: bool, dry_run: bool) -> None:
     help="Force adding a new environment even if one already exists (rollback)",
 )
 def build(force: bool) -> None:
-    tmp_path = Path("tmp").resolve()
+    tmp_path = Path("./output/tmp").resolve()
     tmp_path.mkdir(parents=True, exist_ok=True)
     config = load_config(Args.config_dir)
     builder = Build(
