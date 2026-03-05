@@ -58,5 +58,5 @@ class Config(BaseModel):
 
 
 def load_config(path: Path) -> Config:
-    with open(path / "config.yaml") as f:
+    with open(path) as f:
         return Config.model_validate(yaml.safe_load(f.read()))

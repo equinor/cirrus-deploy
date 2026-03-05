@@ -8,7 +8,9 @@ import sys
 import asyncio
 from pathlib import Path
 
-from deploy.config import Config, AreaConfig
+import click
+
+from deploy.config import Config, AreaConfig, load_config
 from deploy.package_list import PackageList
 from deploy.utils import redirect_output
 
@@ -191,3 +193,37 @@ def do_sync(
     dry_run: bool = False,
 ) -> None:
     asyncio.run(_sync(configpath, config, prefix, dest_prefix, no_async, dry_run))
+
+
+@click.command("sync", help="Synchronise all locations")
+@click.argument(
+    "config-file",
+    type=Path,
+)
+@click.option(
+    "--prefix",
+    default="./output/prefix",
+    type=Path,
+)
+@click.option(
+    "--no-async",
+    help="Don't deploy asynchronously",
+    is_flag=True,
+    default=False,
+)
+@click.option(
+    "--dry-run",
+    is_flag=True,
+    default=False,
+)
+def subcommand_sync(
+    config_file: Path, prefix: Path, no_async: bool, dry_run: bool
+) -> None:
+    config = load_config(config_file)
+    do_sync(
+        config_file.parent,
+        config,
+        prefix=prefix,
+        no_async=no_async,
+        dry_run=dry_run,
+    )

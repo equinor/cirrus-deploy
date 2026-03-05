@@ -1,9 +1,8 @@
-from deploy.build import Build
+from deploy.commands.build import Build, _checkout
 from deploy.config import Config
 from pathlib import Path
 import pytest
 from unittest.mock import patch
-from deploy.build import _checkout
 
 
 @pytest.fixture
@@ -143,7 +142,7 @@ def test_package_dependency(
 def test_clean_package_cache_on_rebuild(
     tmp_path, base_config, config_update, script_content
 ):
-    with patch("deploy.build.subprocess") as mocked_subprocess:
+    with patch("deploy.commands.build.subprocess") as mocked_subprocess:
         base_config["builds"].append(
             {
                 "name": "A",

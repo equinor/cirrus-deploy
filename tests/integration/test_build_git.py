@@ -1,5 +1,5 @@
 import subprocess
-from deploy.build import Build
+from deploy.commands.build import Build
 
 
 def test_build(build: Build) -> None:

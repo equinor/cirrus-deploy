@@ -1,7 +1,7 @@
 from __future__ import annotations
 import os
 from pathlib import Path
-from deploy.build import Build
+from deploy.commands.build import Build
 from deploy.config import Config
 import pytest
 import subprocess

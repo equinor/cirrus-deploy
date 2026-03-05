@@ -22,3 +22,6 @@ devenv.local.nix
 # IntelliJ
 .idea/
 .fleet/
+
+# Output from Karsk
+output/

@@ -4,9 +4,9 @@ from subprocess import CalledProcessError
 from pathlib import Path
 import pytest
 
-from deploy.build import Build
 from deploy.config import Config
-from deploy.sync import Sync, do_sync, change_prefix
+from deploy.commands.build import Build
+from deploy.commands.sync import Sync, do_sync, change_prefix
 
 BUILD_SCRIPT = """\
 mkdir $out/bin

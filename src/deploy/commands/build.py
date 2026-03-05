@@ -12,7 +12,9 @@ from itertools import chain
 from tempfile import NamedTemporaryFile, TemporaryDirectory
 import shutil
 
-from deploy.config import Config, GitConfig
+import click
+
+from deploy.config import Config, GitConfig, load_config
 from deploy.package import Package
 from deploy.package_list import PackageList
 from deploy.utils import redirect_output
@@ -239,3 +241,31 @@ exec "$ENTRY_POINT" "${{@:2}}"
 
         wrapper_script.write_text(script_content)
         wrapper_script.chmod(0o755)
+
+
+@click.command("build", help="Build Cirrus and dependencies")
+@click.argument(
+    "config-file",
+    type=Path,
+)
+@click.option(
+    "--prefix",
+    default="./output/prefix",
+    type=Path,
+)
+@click.option(
+    "--force",
+    "-f",
+    is_flag=True,
+    default=False,
+    help="Force adding a new environment even if one already exists (rollback)",
+)
+def subcommand_build(config_file: Path, prefix: Path, force: bool) -> None:
+    config = load_config(config_file)
+    builder = Build(
+        config_file.parent,
+        config,
+        force=force,
+        prefix=prefix,
+    )
+    builder.build()
