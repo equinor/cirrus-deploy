@@ -27,7 +27,7 @@ dev = [
 ]
 
 [project.scripts]
-deploy = "deploy.__main__:cli"
+deploy = "deploy.cli:cli"
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
