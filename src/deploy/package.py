@@ -23,13 +23,11 @@ class Package:
     def __init__(
         self,
         configpath: Path,
-        extra_scripts: Path | None,
         storepath: Path,
         config: BuildConfig,
         depends: list[Package],
     ) -> None:
         self.configpath = configpath
-        self.extra_scripts = extra_scripts
         self.storepath = storepath
         self.config = config
         self.depends = depends
@@ -53,20 +51,11 @@ class Package:
         else:
             raise RuntimeError("Unknown self.config.src type")
 
-    @property
-    def builder(self) -> Path:
-        name = f"build_{self.config.name}.sh"
-        if self.extra_scripts is not None and (self.extra_scripts / name).is_file():
-            return self.extra_scripts / name
-        else:
-            return SCRIPTS / name
-
     @cached_property
     def buildhash(self) -> str:
         h = hashlib.sha1(usedforsecurity=False)
 
         h.update(self.config.model_dump_json().encode("utf-8"))
-        h.update(self.builder.read_bytes())
 
         if isinstance(self.config.src, FileConfig) and self.src is not None:
             h.update(self.src.read_bytes())

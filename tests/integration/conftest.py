@@ -35,6 +35,18 @@ class Git:
         return self("rev-parse", "HEAD").strip()
 
 
+FOO_BUILD = """
+mkdir $out/lib
+cc -shared -fPIC -o $out/lib/libfoo.so $src/foo.c
+"""
+
+
+BAR_BUILD = """
+mkdir $out/bin
+cc -o $out/bin/bar $src/bar.c -L$foo/lib -lfoo -Wl,-rpath,$foo/lib
+"""
+
+
 @pytest.fixture(scope="session")
 def git_foo(tmp_path_factory: pytest.TempPathFactory) -> Git:
     tmp_path = tmp_path_factory.mktemp("foo.git")
@@ -57,6 +69,7 @@ def config(tmp_path: Path, git_foo: Git, git_bar: Git) -> Config:
             "url": f"file://{git_foo.path}",
             "ref": git_foo.ref,
         },
+        "build": FOO_BUILD,
     }
 
     bar_config = {
@@ -68,6 +81,7 @@ def config(tmp_path: Path, git_foo: Git, git_bar: Git) -> Config:
             "ref": git_bar.ref,
         },
         "depends": ["foo"],
+        "build": BAR_BUILD,
     }
 
     base_config = {
@@ -88,6 +102,5 @@ def build(tmp_path: Path, config: Config) -> Build:
         Path("/dev/null"),
         config,
         force=False,
-        extra_scripts=DIR / "data/scripts",
         prefix=tmp_path / "output",
     )

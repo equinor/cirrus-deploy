@@ -9,6 +9,27 @@ builds:
       url: https://github.com/petsc/petsc.git
       ref: a093114c2e7b4ba1f47e6ac8a72c57724150f16d
 
+    build: |
+      export PETSC_DIR=$PWD
+      export PETSC_ARCH=gnu-c-opt
+
+      ./configure                                  \
+          --COPTFLAGS="-O3"                        \
+          --CXXOPTFLAGS="-O3"                      \
+          --FOPTFLAGS="-O3"                        \
+          --download-fblaslapack=yes               \
+          --download-hdf5=yes                      \
+          --download-hypre=yes                     \
+          --download-mpich=yes                     \
+          --download-ptscotch=yes                  \
+          --download-hdf5-fortran-bindings=yes     \
+          --with-debugging=0                       \
+          --prefix="$out"
+
+      make all
+      make check
+      make install
+
   - name: pflotran
     version: 1.8.12
     depends: [ petsc ]
@@ -17,6 +38,18 @@ builds:
       url: https://bitbucket.org/opengosim/pflotran_ogs_1.8
       ref: 9dda71eba27f4beef56a269d03037b6f3230578b
 
+    build: |
+      cd "$src/src/pflotran"
+      git reset --hard
+      git clean -xdf
+
+      export PETSC_DIR="$petsc"
+      export PETSC_ARCH=
+
+      make UPDATE_PROVENANCE=0 pflotran
+      make UPDATE_PROVENANCE=0 check
+      install -D pflotran "$out/bin/pflotran"
+
   - name: runcirrus
     version: 1.0.0
     src:
@@ -24,6 +57,9 @@ builds:
       url: https://github.com/equinor/runcirrus.git
       ref: 757559903905fd7bc0725c69382ca24efd53ade4
 
+    build: |
+      python3.11 -m venv $out
+      $out/bin/pip install $src
 
 envs:
   - name: pflotran

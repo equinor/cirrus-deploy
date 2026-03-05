@@ -9,7 +9,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 from itertools import chain
-from tempfile import TemporaryDirectory
+from tempfile import NamedTemporaryFile, TemporaryDirectory
 import shutil
 
 from deploy.config import Config, GitConfig
@@ -101,8 +101,21 @@ def _build(pkg: Package, tmp: str) -> None:
 async def _async_build(pkg: Package, env: dict[str, str], buildlog: Any) -> None:
     cwd = pkg.src if pkg.src is not None and pkg.src.is_dir() else Path("/tmp")
 
+    builder = NamedTemporaryFile("w", delete=False)
+    builder.writelines(
+        [
+            "#!/usr/bin/env bash\n",
+            "set -ex\n",
+            f"echo 'src: {pkg.src}'\n",
+            f"echo 'out: {pkg.out}'\n",
+            pkg.config.build,
+        ]
+    )
+    builder.close()
+    os.chmod(builder.name, 0o700)
+
     proc = await asyncio.create_subprocess_exec(
-        pkg.builder,
+        builder.name,
         cwd=cwd,
         env=env,
         stdout=asyncio.subprocess.PIPE,
@@ -133,8 +146,6 @@ class Build:
             configpath,
             config,
             prefix=prefix,
-            extra_scripts=extra_scripts,
-            check_scripts=True,
             check_existence=False,
         )
 
