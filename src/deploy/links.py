@@ -45,22 +45,17 @@ def validate(base: Path) -> None:
 
 
 def make_links(
-    links: dict[str, dict[str, str]],
+    links: dict[str, str],
     prefix: Path,
-    force: bool = True,
 ) -> None:
-    for subdir, link_specs in links.items():
-        for source, target in link_specs.items():
-            path = prefix / subdir / source
+    for source, target in links.items():
+        path = prefix / source
 
-            if not force and path.exists():
-                continue
+        if target == "^":
+            target = get_latest(prefix)
 
-            if target == "^":
-                target = get_latest(prefix / subdir)
+        path.unlink(missing_ok=True)
+        path.symlink_to(target)
+        print(f"Created symlink: {path} -> {target}")
 
-            path.unlink(missing_ok=True)
-            path.symlink_to(target)
-            print(f"Created symlink: {path} -> {target}")
-
-        validate(prefix / subdir)
+    validate(prefix)

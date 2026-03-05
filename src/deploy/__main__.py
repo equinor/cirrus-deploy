@@ -9,7 +9,6 @@ from dataclasses import dataclass
 
 from deploy.build import Build
 from deploy.config import load_config
-from deploy.links import make_links
 from deploy.check import do_check
 from deploy.package_list import PackageList
 from deploy.sync import do_sync
@@ -90,13 +89,6 @@ def build(force: bool) -> None:
         prefix=Args.prefix,
     )
     builder.build()
-
-
-@cli.command(help="Generate symlinks from ./symlinks.json")
-def links() -> None:
-    configpath = Path.cwd()
-    config = load_config(configpath)
-    make_links(config.links, prefix=Args.prefix)
 
 
 @cli.command(help="Run tests in ./deploy_tests using pytest")
