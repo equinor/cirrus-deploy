@@ -16,6 +16,7 @@ from deploy.config import Config, GitConfig
 from deploy.package import Package
 from deploy.package_list import PackageList
 from deploy.utils import redirect_output
+from deploy.links import make_links
 
 
 def _checkout(pkg: Package) -> None:
@@ -151,12 +152,14 @@ class Build:
                 _build(pkg, tmp)
 
     def _build_envs(self) -> None:
-        for name, dest in self.package_list.envs:
+        for name, dest, entrypoint in self.package_list.envs:
             pkg = self.packages[name]
             path = self._get_build_path(self.package_list.prefix / dest, pkg)
             if path is None:
                 continue
             self._build_env_for_package(path, pkg)
+            self._create_default_symlinks(self.package_list.prefix / dest, path)
+            self._create_wrapper_script(dest, pkg, entrypoint)
 
     def _build_env_for_package(self, base: Path, finalpkg: Package) -> None:
         for pkg in chain([finalpkg], finalpkg.depends):
@@ -188,3 +191,39 @@ class Build:
         sys.exit(
             f"Out of range while trying to find a build number for {finalpkg.config.version}"
         )
+
+    def _create_wrapper_script(
+        self, dest: str, pkg: Package, entrypoint: str | None
+    ) -> None:
+        if entrypoint is None:
+            return
+
+        bin_dir = self.package_list.prefix / "bin"
+        bin_dir.mkdir(parents=True, exist_ok=True)
+
+        wrapper_script = bin_dir / "run"
+
+        script_content = f"""#!/usr/bin/env bash
+# Auto-generated wrapper script for {pkg.config.name}
+
+VERSION="${{1:-stable}}"
+BASE_DIR="$(dirname "$(dirname "$(readlink -f "${{BASH_SOURCE[0]}}")")")"
+VERSIONS_DIR="$BASE_DIR/{dest}"
+
+ENTRY_POINT="$VERSIONS_DIR/$VERSION/{entrypoint}"
+
+if [ ! -f "$ENTRY_POINT" ]; then
+    echo "Error: Entry point not found: $ENTRY_POINT" >&2
+    exit 1
+fi
+
+exec "$ENTRY_POINT" "${{@:2}}"
+"""
+
+        wrapper_script.write_text(script_content)
+        wrapper_script.chmod(0o755)
+
+    def _create_default_symlinks(self, base: Path, target: Path) -> None:
+        rel_base = base.relative_to(self.package_list.prefix)
+        default_links = {str(rel_base): {"latest": "^", "stable": "latest"}}
+        make_links(default_links, prefix=self.package_list.prefix, force=False)

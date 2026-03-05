@@ -99,7 +99,7 @@ def test_successful_sync(tmp_path, base_config):
 
     builder = _deploy_config(base_config, tmp_path)
 
-    make_links(base_config, prefix=tmp_path)
+    make_links(base_config.links, prefix=tmp_path)
     pkg = builder.packages["A"]
     installed_file_path = pkg.out / "bin/a_file"
     assert installed_file_path.exists()

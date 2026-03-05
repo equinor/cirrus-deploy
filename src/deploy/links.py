@@ -3,7 +3,6 @@ from __future__ import annotations
 import os
 import sys
 
-from deploy.config import Config
 from pathlib import Path
 from semver import Version
 
@@ -45,12 +44,21 @@ def validate(base: Path) -> None:
             print(f"'{name}' links to '{target}' which doesn't exist!", file=sys.stderr)
 
 
-def make_links(config: Config, *, prefix: Path) -> None:
-    for subdir, links in config.links.items():
-        for source, target in links.items():
+def make_links(
+    links: dict[str, dict[str, str]],
+    prefix: Path,
+    force: bool = True,
+) -> None:
+    for subdir, link_specs in links.items():
+        for source, target in link_specs.items():
             path = prefix / subdir / source
+
+            if not force and path.exists():
+                continue
+
             if target == "^":
                 target = get_latest(prefix / subdir)
+
             path.unlink(missing_ok=True)
             path.symlink_to(target)
             print(f"Created symlink: {path} -> {target}")

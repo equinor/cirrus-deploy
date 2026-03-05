@@ -114,7 +114,7 @@ def build(force: bool, extra_scripts: str) -> None:
 def links() -> None:
     configpath = Path.cwd()
     config = load_config(configpath)
-    make_links(config, prefix=Args.prefix)
+    make_links(config.links, prefix=Args.prefix)
 
 
 @cli.command(help="Run tests in ./deploy_tests using pytest")
@@ -135,10 +135,10 @@ def test(args: tuple[str, ...]) -> None:
     for pkg in plist.packages.values():
         os.environ[f"{pkg.config.name}_version"] = pkg.config.version
 
-    for name, dest in plist.envs:
+    for name, dest, _ in plist.envs:
         os.environ[f"{name}_env"] = f"{Args.prefix / dest}"
 
-    for name, dest in plist.envs:
+    for name, dest, _ in plist.envs:
         pkg = plist.packages[name]
         for path in (plist.prefix / dest).glob("*/manifest"):
             if path.read_text() == pkg.manifest:

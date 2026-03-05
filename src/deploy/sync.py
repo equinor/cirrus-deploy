@@ -49,13 +49,13 @@ class Sync:
                 if not (path.parent).is_symlink()
                 if plist.packages[name].manifest == path.read_text()
             ]
-            for name, dest in plist.envs
+            for name, dest, _ in plist.envs
         }
 
         # Create symlinking script
         self._post_script = io.StringIO()
         self._post_script.write("set -euxo pipefail\n")
-        for _, dest in plist.envs:
+        for _, dest, _ in plist.envs:
             self._post_script.write(f"mkdir -p {self._dest_prefix / dest}\n")
             self._post_script.writelines(
                 f"ln -sfn {os.readlink(path)} {change_prefix(path, plist.prefix, self._dest_prefix)} \n"
