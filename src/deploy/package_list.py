@@ -46,7 +46,9 @@ class PackageList:
                 [self.packages[x] for x in build.depends],
             )
 
-        self.envs: list[tuple[str, str]] = [(e.name, e.dest) for e in config.envs]
+        self.envs: list[tuple[str, str, str | None]] = [
+            (e.name, e.dest, e.entrypoint) for e in config.envs
+        ]
 
         if check_scripts:
             self._check_scripts_exist()

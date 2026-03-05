@@ -28,6 +28,7 @@ class BuildConfig(BaseModel):
 class EnvConfig(BaseModel):
     name: str
     dest: str
+    entrypoint: str | None = None
 
 
 class PathConfig(BaseModel):
