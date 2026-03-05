@@ -6,7 +6,6 @@ import pytest
 
 from deploy.build import Build
 from deploy.config import Config
-from deploy.links import make_links
 from deploy.sync import Sync, do_sync, change_prefix
 
 BUILD_SCRIPT = """\
@@ -94,7 +93,6 @@ def test_successful_sync(tmp_path, base_config):
 
     builder = _deploy_config(base_config, tmp_path)
 
-    make_links(base_config.links, prefix=tmp_path)
     pkg = builder.packages["A"]
     installed_file_path = pkg.out / "bin/a_file"
     assert installed_file_path.exists()

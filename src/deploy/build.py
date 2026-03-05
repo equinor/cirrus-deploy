@@ -148,6 +148,7 @@ class Build:
             prefix=prefix,
             check_existence=False,
         )
+        self.env_links: dict[str, dict[str, str]] = config.links
 
     @property
     def packages(self) -> dict[str, Package]:
@@ -169,7 +170,12 @@ class Build:
             if path is None:
                 continue
             self._build_env_for_package(path, pkg)
-            self._create_default_symlinks(self.package_list.prefix / dest, path)
+
+            default_links: dict[str, str] = {"latest": "^", "stable": "latest"}
+            make_links(
+                links={**default_links, **self.env_links.get(dest, {})},
+                prefix=self.package_list.prefix / dest,
+            )
             self._create_wrapper_script(dest, pkg, entrypoint)
 
     def _build_env_for_package(self, base: Path, finalpkg: Package) -> None:
@@ -233,8 +239,3 @@ exec "$ENTRY_POINT" "${{@:2}}"
 
         wrapper_script.write_text(script_content)
         wrapper_script.chmod(0o755)
-
-    def _create_default_symlinks(self, base: Path, target: Path) -> None:
-        rel_base = base.relative_to(self.package_list.prefix)
-        default_links = {str(rel_base): {"latest": "^", "stable": "latest"}}
-        make_links(default_links, prefix=self.package_list.prefix, force=False)

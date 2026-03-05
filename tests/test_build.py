@@ -176,7 +176,7 @@ def test_clean_package_cache_on_rebuild(
         assert "clean" in git_commands
 
 
-def test_default_symlinks_created_on_build(tmp_path, base_config):
+def test_not_overwrite_user_set_links_with_default(tmp_path, base_config):
     base_config["builds"].append(
         {"name": "test", "version": "1.0.0", "build": "mkdir -p $out/bin\n"}
     )
@@ -189,8 +189,21 @@ def test_default_symlinks_created_on_build(tmp_path, base_config):
     stable_link = tmp_path / "versions" / "stable"
     latest_link = tmp_path / "versions" / "latest"
 
-    assert stable_link.is_symlink()
-    assert latest_link.is_symlink()
     assert str(stable_link.readlink()) == "latest"
     assert str(latest_link.readlink()) == "1.0.0-1"
     assert stable_link.resolve() == latest_link.resolve()
+
+    # Now we create a new build with a new version, but we set the stable link to point to the old version
+    base_config["builds"] = [
+        {"name": "test", "version": "1.0.1", "build": "mkdir -p $out/bin\n"}
+    ]
+    base_config["links"] = {"versions": {"stable": "1.0.0"}}
+
+    config = Config.model_validate(base_config)
+    builder = Build(tmp_path, config, extra_scripts=tmp_path, prefix=tmp_path)
+    builder.build()
+
+    assert stable_link.is_symlink()
+    assert latest_link.is_symlink()
+    assert str(stable_link.readlink()) == "1.0.0"
+    assert str(latest_link.readlink()) == "1.0.1-1"
