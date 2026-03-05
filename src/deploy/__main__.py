@@ -60,19 +60,10 @@ def check() -> None:
     is_flag=True,
     default=False,
 )
-@click.option(
-    "--extra-scripts",
-    help="Directory containing additional build scripts for the packages",
-    default=None,
-)
-def sync(no_async: bool, dry_run: bool, extra_scripts: str) -> None:
+def sync(no_async: bool, dry_run: bool) -> None:
     config = load_config(Args.config_dir)
-    extra_scripts_path = (
-        Path(extra_scripts).expanduser().resolve() if extra_scripts else None
-    )
     do_sync(
         Args.config_dir,
-        extra_scripts_path,
         config,
         prefix=Args.prefix,
         no_async=no_async,
@@ -88,22 +79,13 @@ def sync(no_async: bool, dry_run: bool, extra_scripts: str) -> None:
     default=False,
     help="Force adding a new environment even if one already exists (rollback)",
 )
-@click.option(
-    "--extra-scripts",
-    help="Directory containing additional build scripts for the packages",
-    default=None,
-)
-def build(force: bool, extra_scripts: str) -> None:
+def build(force: bool) -> None:
     tmp_path = Path("tmp").resolve()
     tmp_path.mkdir(parents=True, exist_ok=True)
-    extra_scripts_path = (
-        Path(extra_scripts).expanduser().resolve() if extra_scripts else None
-    )
     config = load_config(Args.config_dir)
     builder = Build(
         Args.config_dir,
         config,
-        extra_scripts=extra_scripts_path,
         force=force,
         prefix=Args.prefix,
     )

@@ -155,14 +155,13 @@ class Sync:
 
 async def _sync(
     configpath: Path,
-    extra_scripts: Path | None,
     config: Config,
     prefix: Path,
     dest_prefix: Path | None,
     no_async: bool,
     dry_run: bool,
 ) -> None:
-    plist = PackageList(configpath, config, extra_scripts=extra_scripts, prefix=prefix)
+    plist = PackageList(configpath, config, prefix=prefix)
     syncer = Sync(
         prefix / config.paths.store, plist, dry_run=dry_run, dest_prefix=dest_prefix
     )
@@ -184,7 +183,6 @@ async def _sync(
 
 def do_sync(
     configpath: Path,
-    extra_scripts: Path | None,
     config: Config,
     *,
     prefix: Path,
@@ -192,6 +190,4 @@ def do_sync(
     no_async: bool = False,
     dry_run: bool = False,
 ) -> None:
-    asyncio.run(
-        _sync(configpath, extra_scripts, config, prefix, dest_prefix, no_async, dry_run)
-    )
+    asyncio.run(_sync(configpath, config, prefix, dest_prefix, no_async, dry_run))

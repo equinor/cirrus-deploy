@@ -10,8 +10,6 @@ from deploy.links import make_links
 from deploy.sync import Sync, do_sync, change_prefix
 
 BUILD_SCRIPT = """\
-#!/usr/bin/env bash
-
 mkdir $out/bin
 echo "hello world">>$out/bin/a_file
 """
@@ -33,7 +31,7 @@ def fake_ssh(monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 @pytest.fixture
-def base_config(tmp_path):
+def base_config():
     config = {
         "paths": {"store": Path()},
         "builds": [
@@ -41,6 +39,7 @@ def base_config(tmp_path):
                 "name": "A",
                 "version": "0.0.0",
                 "depends": [],
+                "build": BUILD_SCRIPT,
             },
         ],
         "envs": [{"name": "A", "dest": "location"}],
@@ -48,16 +47,12 @@ def base_config(tmp_path):
         "links": {"location": {"latest": "^"}},
     }
 
-    (tmp_path / "build_A.sh").write_text(BUILD_SCRIPT)
-    (tmp_path / "build_A.sh").chmod(0o755)
     config = Config.model_validate(config)
     return config
 
 
 def _deploy_config(config, configpath, prefix=None):
-    builder = Build(
-        configpath, config, extra_scripts=configpath, prefix=prefix or configpath
-    )
+    builder = Build(configpath, config, prefix=prefix or configpath)
     builder.build()
     return builder
 
@@ -107,7 +102,6 @@ def test_successful_sync(tmp_path, base_config):
     do_sync(
         configpath=tmp_path,
         config=base_config,
-        extra_scripts=tmp_path,
         prefix=tmp_path,
         dest_prefix=destination,
     )
@@ -128,7 +122,6 @@ def test_failing_sync(tmp_path, base_config):
         do_sync(
             configpath=tmp_path,
             config=base_config,
-            extra_scripts=tmp_path,
             prefix=tmp_path,
             dest_prefix=Path("/non-existent/destination"),
         )

@@ -24,6 +24,8 @@ class BuildConfig(BaseModel):
     src: GitConfig | FileConfig | None = Field(None, discriminator="type")
     depends: list[str] = Field(default_factory=list)
 
+    build: str
+
 
 class EnvConfig(BaseModel):
     name: str

@@ -1,4 +1,3 @@
-import re
 from deploy.build import Build
 from deploy.config import Config
 from pathlib import Path
@@ -8,7 +7,7 @@ from deploy.build import _checkout
 
 
 @pytest.fixture
-def base_config(tmp_path):
+def base_config():
     return {
         "paths": {"store": Path()},
         "builds": [],
@@ -27,30 +26,30 @@ def test_minimal_config(tmp_path, base_config):
 @pytest.mark.parametrize(
     "script_content,config_update,expected_hash",
     [
-        pytest.param("content", {}, "e36260dc71ec23d2a4864cb91a6f4cf39a2382a8"),
+        pytest.param("content", {}, "bd6cf79db824f2bd9bc774b7cb3d1fe4b00c705e"),
         pytest.param(
-            "different content", {}, "417c53f6642dacd630c04b68eafbf61cd71a5808"
+            "different content", {}, "1097553096e0b4aad4b08877a52cc1773c714002"
         ),
         pytest.param(
             "content",
             {"version": "1.0"},
-            "9071d31cc26091e45c4319fbf49523da9e9076e7",
+            "0d941324747a0e908b0655622d335943c1aaacd2",
         ),
         pytest.param(
             "different content",
             {"version": "1.0"},
-            "7e460cb3aec91689ced8ede10f73b5572781b2c9",
+            "1afc69b91647e79d5cee43e8816c842789aa00c1",
         ),
         pytest.param(
             "content",
             {"src": {"type": "git", "url": "https://example.com", "ref": "abcdefg"}},
-            "29babb628169cbc393ded61e18ee8d4e906a3a34",
+            "9c8cbbcc94f74ab126cf7a20ec4e5a016b17a46f",
             id="git source",
         ),
         pytest.param(
             "content",
-            {"src": {"type": "file", "path": "build_A.sh"}},
-            "4881eaad3331c6285babfa160920db1d9cd19e35",
+            {"src": {"type": "file", "path": "some_file"}},
+            "74994b22e5130b79d7eb9e3545562a718adee221",
             id="file source",
         ),
     ],
@@ -58,19 +57,19 @@ def test_minimal_config(tmp_path, base_config):
 def test_single_package(
     tmp_path, base_config, config_update, script_content, expected_hash
 ):
-    (tmp_path / "build_A.sh").write_text(script_content)
-    (tmp_path / "build_A.sh").chmod(0o755)
+    (tmp_path / "some_file").write_text("Some text")
     base_config["builds"].append(
         {
             "name": "A",
             "version": "0.0",
             "depends": [],
+            "build": script_content,
             **config_update,
         }
     )
 
     config = Config.model_validate(base_config)
-    build = Build(tmp_path, config, extra_scripts=tmp_path, prefix=tmp_path)
+    build = Build(tmp_path, config, prefix=tmp_path)
     assert len(build.packages) == 1
     assert "A" in build.packages
     assert build.packages["A"].buildhash == expected_hash
@@ -81,23 +80,23 @@ def test_single_package(
     [
         pytest.param(
             "content",
-            "e36260dc71ec23d2a4864cb91a6f4cf39a2382a8",
+            "bd6cf79db824f2bd9bc774b7cb3d1fe4b00c705e",
             "content",
-            "1a077b36665b28a8141efe3cae6c8a0f56a00b59",
+            "352cf423ae640cd95deee107c0eda948a1b6975f",
             id="Base test",
         ),
         pytest.param(
             "changed content",
-            "b1193c02fb7e0a94012f5b6887f8186069dcb50c",
+            "a1c4dda62cf19d724916f4648c38ce23979dc83d",
             "content",
-            "c4b6e82573051e913a9f3d96577c62ec8d02a287",
+            "6fc357219635a6d22ddd509d90c36321ff71493f",
             id="Changes in A changes both hashes",
         ),
         pytest.param(
             "content",
-            "e36260dc71ec23d2a4864cb91a6f4cf39a2382a8",
+            "bd6cf79db824f2bd9bc774b7cb3d1fe4b00c705e",
             "changed content",
-            "80a25fcb95675671b025346aa92950518f461120",
+            "c23e000403370ca163e1d5f471781aa70cc9a530",
             id="Changes in B only changes B's hash",
         ),
     ],
@@ -110,72 +109,25 @@ def test_package_dependency(
     script_content_B,
     expected_hash_B,
 ):
-    (tmp_path / "build_A.sh").write_text(script_content_A)
-    (tmp_path / "build_A.sh").chmod(0o755)
-    (tmp_path / "build_B.sh").write_text(script_content_B)
-    (tmp_path / "build_B.sh").chmod(0o755)
     base_config["builds"] = [
         {
             "name": "A",
             "version": "0.0",
             "depends": [],
+            "build": script_content_A,
         },
         {
             "name": "B",
             "version": "0.0",
             "depends": ["A"],
+            "build": script_content_B,
         },
     ]
     config = Config.model_validate(base_config)
-    build = Build(Path("/dummy"), config, extra_scripts=tmp_path, prefix=tmp_path)
+    build = Build(Path("/dummy"), config, prefix=tmp_path)
     assert len(build.packages) == 2
     assert build.packages["A"].buildhash == expected_hash_A
     assert build.packages["B"].buildhash == expected_hash_B
-
-
-def test_build_script_validity(
-    tmp_path,
-    base_config,
-):
-    base_config["builds"] = [
-        {
-            "name": "A",
-            "version": "0.0",
-            "depends": [],
-        },
-        {
-            "name": "B",
-            "version": "0.0",
-            "depends": ["A"],
-        },
-    ]
-    config = Config.model_validate(base_config)
-
-    # Test that if no files are present, the first package will error
-    with pytest.raises(
-        SystemExit,
-        match=re.escape(
-            "Build script for package A (build_A.sh) wasn't found or it isn't executable"
-        ),
-    ):
-        _ = Build(Path("/dummy"), config, extra_scripts=tmp_path, prefix=tmp_path)
-
-    # Test that if both files exist, but only the first one is executable, we'll
-    # error on the second
-    (tmp_path / "build_A.sh").write_text("")
-    (tmp_path / "build_A.sh").chmod(0o755)
-    (tmp_path / "build_B.sh").write_text("")
-    with pytest.raises(
-        SystemExit,
-        match=re.escape(
-            "Build script for package B (build_B.sh) wasn't found or it isn't executable"
-        ),
-    ):
-        _ = Build(Path("/dummy"), config, extra_scripts=tmp_path, prefix=tmp_path)
-
-    # Check that the correct configuration is correct
-    (tmp_path / "build_B.sh").chmod(0o755)
-    Build(Path("/dummy"), config, extra_scripts=tmp_path, prefix=tmp_path)
 
 
 @pytest.mark.parametrize(
@@ -192,19 +144,18 @@ def test_clean_package_cache_on_rebuild(
     tmp_path, base_config, config_update, script_content
 ):
     with patch("deploy.build.subprocess") as mocked_subprocess:
-        (tmp_path / "build_A.sh").write_text(script_content)
-        (tmp_path / "build_A.sh").chmod(0o755)
         base_config["builds"].append(
             {
                 "name": "A",
                 "version": "0.0",
                 "depends": [],
+                "build": script_content,
                 **config_update,
             }
         )
 
         config = Config.model_validate(base_config)
-        build = Build(tmp_path, config, extra_scripts=tmp_path, prefix=tmp_path)
+        build = Build(tmp_path, config, prefix=tmp_path)
         pck = list(build.packages.values())[0]
 
         _checkout(pck)
@@ -226,10 +177,9 @@ def test_clean_package_cache_on_rebuild(
 
 
 def test_default_symlinks_created_on_build(tmp_path, base_config):
-    (tmp_path / "build_test.sh").write_text("#!/bin/bash\nmkdir -p $out/bin\n")
-    (tmp_path / "build_test.sh").chmod(0o755)
-
-    base_config["builds"].append({"name": "test", "version": "1.0.0"})
+    base_config["builds"].append(
+        {"name": "test", "version": "1.0.0", "build": "mkdir -p $out/bin\n"}
+    )
     base_config["envs"].append({"name": "test", "dest": "versions"})
 
     config = Config.model_validate(base_config)
