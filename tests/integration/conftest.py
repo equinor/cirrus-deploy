@@ -85,11 +85,12 @@ def config(tmp_path: Path, git_foo: Git, git_bar: Git) -> Config:
     }
 
     base_config = {
+        "main-package": "bar",
+        "entrypoint": "",
         "paths": {
             "store": "versions/.store",
         },
-        "builds": [foo_config, bar_config],
-        "envs": [],
+        "packages": [foo_config, bar_config],
         "links": {},
     }
 

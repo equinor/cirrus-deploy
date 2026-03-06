@@ -10,7 +10,6 @@ def base_config():
     return {
         "paths": {"store": Path()},
         "builds": [],
-        "envs": [],
         "areas": [],
         "links": {"location": {"symlink": "target"}},
     }

@@ -18,16 +18,17 @@ class PackageList:
         check_existence: bool = True,
     ) -> None:
         self.prefix: Path = prefix
-        self.storepath: Path = prefix / config.paths.store
-        buildmap = {x.name: x for x in config.builds}
+        self.storepath: Path = prefix / ".store"
+        self.config: Config = config
+        buildmap = {x.name: x for x in config.packages}
 
         self.storepath.mkdir(parents=True, exist_ok=True)
 
         graph: nx.DiGraph[str] = nx.DiGraph()
-        for build in config.builds:
-            graph.add_node(build.name)
-            for dep in build.depends:
-                graph.add_edge(dep, build.name)
+        for package in config.packages:
+            graph.add_node(package.name)
+            for dep in package.depends:
+                graph.add_edge(dep, package.name)
 
         self.packages: dict[str, Package] = {}
         for node in nx.topological_sort(graph):
@@ -38,10 +39,6 @@ class PackageList:
                 build,
                 [self.packages[x] for x in build.depends],
             )
-
-        self.envs: list[tuple[str, str, str | None]] = [
-            (e.name, e.dest, e.entrypoint) for e in config.envs
-        ]
 
         if check_existence:
             self._check_existence()

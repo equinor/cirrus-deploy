@@ -44,37 +44,40 @@ class Sync:
 
         self._store_paths: list[Path] = [pkg.out for pkg in plist.packages.values()]
 
-        self._env_paths: dict[str, list[Path]] = {
-            dest: [
-                path.parent
-                for path in (plist.prefix / dest).glob("*/manifest")
-                if not (path.parent).is_symlink()
-                if plist.packages[name].manifest == path.read_text()
-            ]
-            for name, dest, _ in plist.envs
-        }
+        self._env_paths: list[Path] = [
+            path.parent
+            for path in plist.prefix.glob("*/manifest")
+            if not path.parent.is_symlink()
+            if plist.packages[plist.config.main_package].manifest == path.read_text()
+        ]
+
+        # Create preliminary script
+        self._pre_script = io.StringIO()
+        self._pre_script.write("set -euxo pipefail\n")
+        self._pre_script.write(f"mkdir -p {self._dest_prefix}/.store\n")
 
         # Create symlinking script
         self._post_script = io.StringIO()
         self._post_script.write("set -euxo pipefail\n")
-        for _, dest, _ in plist.envs:
-            self._post_script.write(f"mkdir -p {self._dest_prefix / dest}\n")
-            self._post_script.writelines(
-                f"ln -sfn {os.readlink(path)} {change_prefix(path, plist.prefix, self._dest_prefix)} \n"
-                for path in (plist.prefix / dest).glob("*")
-                if path.is_symlink()
-                if (path / "manifest").is_file()
-            )
+        self._pre_script.write(f"mkdir -p {self._dest_prefix}\n")
+        self._post_script.writelines(
+            f"ln -sfn {os.readlink(path)} {change_prefix(path, plist.prefix, self._dest_prefix)} \n"
+            for path in (plist.prefix).glob("*")
+            if path.is_symlink()
+            if (path / "manifest").is_file()
+        )
 
     async def sync_to(self, area: AreaConfig) -> None:
-        # 1. Sync .store/
+        # Ensure directories are created
+        await self._bash(area, self._pre_script.getvalue(), context="prescript")
+
+        # 2. Sync .store/
         await self._rsync(area, self._store_paths, self._storepath, context=".store")
 
-        # 2. Sync environments (eg. versions/1.0.2-2)
-        for dest, paths in self._env_paths.items():
-            await self._rsync(area, paths, self._prefix / dest, context=dest)
+        # 3. Sync environments (eg. versions/1.0.2-2)
+        await self._rsync(area, self._env_paths, self._prefix)
 
-        # 3. Sync all symlinks
+        # 4. Sync all symlinks
         await self._bash(area, self._post_script.getvalue(), context="symlinks")
 
     async def _bash(
@@ -164,9 +167,7 @@ async def _sync(
     dry_run: bool,
 ) -> None:
     plist = PackageList(configpath, config, prefix=prefix)
-    syncer = Sync(
-        prefix / config.paths.store, plist, dry_run=dry_run, dest_prefix=dest_prefix
-    )
+    syncer = Sync(prefix / ".store", plist, dry_run=dry_run, dest_prefix=dest_prefix)
 
     if no_async:
         for area in config.areas:

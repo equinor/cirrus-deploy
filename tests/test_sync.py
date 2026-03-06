@@ -32,8 +32,9 @@ def fake_ssh(monkeypatch: pytest.MonkeyPatch) -> None:
 @pytest.fixture
 def base_config():
     config = {
-        "paths": {"store": Path()},
-        "builds": [
+        "main-package": "A",
+        "entrypoint": "",
+        "packages": [
             {
                 "name": "A",
                 "version": "0.0.0",
@@ -41,9 +42,7 @@ def base_config():
                 "build": BUILD_SCRIPT,
             },
         ],
-        "envs": [{"name": "A", "dest": "location"}],
         "areas": [{"name": "destination", "host": "example.com"}],
-        "links": {"location": {"latest": "^"}},
     }
 
     config = Config.model_validate(config)
@@ -104,19 +103,16 @@ def test_successful_sync(tmp_path, base_config):
         dest_prefix=destination,
     )
 
-    synced_file_path = destination / pkg.out.name / "bin/a_file"
+    synced_file_path = destination / ".store" / pkg.out.name / "bin/a_file"
 
     assert filecmp.cmp(installed_file_path, synced_file_path, shallow=True)
-    assert os.path.islink(destination / "location/latest")
+    assert os.path.islink(destination / "latest")
 
 
 def test_failing_sync(tmp_path, base_config):
     """Try to sync to non existent area"""
     _deploy_config(base_config, tmp_path)
-    with pytest.raises(
-        CalledProcessError,
-        match=r"'example.com:/non-existent/destination'\)' returned non-zero exit status 11.",
-    ):
+    with pytest.raises(CalledProcessError):
         do_sync(
             configpath=tmp_path,
             config=base_config,

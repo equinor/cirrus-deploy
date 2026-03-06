@@ -1,7 +1,7 @@
-paths:
-  store: versions/.store
+main_package: pflotran
+entrypoint: bin/cirrus
 
-builds:
+packages:
   - name: petsc
     version: 3.19.1
     src:
@@ -49,26 +49,3 @@ builds:
       make UPDATE_PROVENANCE=0 pflotran
       make UPDATE_PROVENANCE=0 check
       install -D pflotran "$out/bin/pflotran"
-
-  - name: runcirrus
-    version: 1.0.0
-    src:
-      type: git
-      url: https://github.com/equinor/runcirrus.git
-      ref: 757559903905fd7bc0725c69382ca24efd53ade4
-
-    build: |
-      python3.11 -m venv $out
-      $out/bin/pip install $src
-
-envs:
-  - name: pflotran
-    dest: versions
-  - name: runcirrus
-    dest: versions/runcirrus
-
-links:
-  versions:
-    'latest': '^'
-  versions/runcirrus:
-    'latest': '^'

@@ -144,13 +144,13 @@ class Build:
         force: bool = False,
     ) -> None:
         self.force: bool = force
+        self.config: Config = config
         self.package_list = PackageList(
             configpath,
             config,
             prefix=prefix,
             check_existence=False,
         )
-        self.env_links: dict[str, dict[str, str]] = config.links
 
     @property
     def packages(self) -> dict[str, Package]:
@@ -166,19 +166,17 @@ class Build:
                 _build(pkg, tmp)
 
     def _build_envs(self) -> None:
-        for name, dest, entrypoint in self.package_list.envs:
-            pkg = self.packages[name]
-            path = self._get_build_path(self.package_list.prefix / dest, pkg)
-            if path is None:
-                continue
-            self._build_env_for_package(path, pkg)
+        pkg = self.packages[self.config.main_package]
+        path = self._get_build_path(self.package_list.prefix, pkg)
+        assert path is not None
+        self._build_env_for_package(path, pkg)
 
-            default_links: dict[str, str] = {"latest": "^", "stable": "latest"}
-            make_links(
-                links={**default_links, **self.env_links.get(dest, {})},
-                prefix=self.package_list.prefix / dest,
-            )
-            self._create_wrapper_script(dest, pkg, entrypoint)
+        default_links: dict[str, str] = {"latest": "^", "stable": "latest"}
+        make_links(
+            links={**default_links, **self.config.links},
+            prefix=self.package_list.prefix,
+        )
+        self._create_wrapper_script()
 
     def _build_env_for_package(self, base: Path, finalpkg: Package) -> None:
         for pkg in chain([finalpkg], finalpkg.depends):
@@ -211,25 +209,20 @@ class Build:
             f"Out of range while trying to find a build number for {finalpkg.config.version}"
         )
 
-    def _create_wrapper_script(
-        self, dest: str, pkg: Package, entrypoint: str | None
-    ) -> None:
-        if entrypoint is None:
-            return
-
+    def _create_wrapper_script(self) -> None:
         bin_dir = self.package_list.prefix / "bin"
         bin_dir.mkdir(parents=True, exist_ok=True)
 
         wrapper_script = bin_dir / "run"
 
         script_content = f"""#!/usr/bin/env bash
-# Auto-generated wrapper script for {pkg.config.name}
+# Auto-generated wrapper script for {self.config.main_package}
 
 VERSION="${{1:-stable}}"
 BASE_DIR="$(dirname "$(dirname "$(readlink -f "${{BASH_SOURCE[0]}}")")")"
-VERSIONS_DIR="$BASE_DIR/{dest}"
+VERSIONS_DIR="$BASE_DIR/{self.package_list.prefix}"
 
-ENTRY_POINT="$VERSIONS_DIR/$VERSION/{entrypoint}"
+ENTRY_POINT="$VERSIONS_DIR/$VERSION/{self.config.entrypoint}"
 
 if [ ! -f "$ENTRY_POINT" ]; then
     echo "Error: Entry point not found: $ENTRY_POINT" >&2
