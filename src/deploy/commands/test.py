@@ -35,15 +35,5 @@ def subcommand_test(config_file: Path, prefix: Path, args: tuple[str, ...]) -> N
     for pkg in plist.packages.values():
         os.environ[f"{pkg.config.name}_version"] = pkg.config.version
 
-    for name, dest, _ in plist.envs:
-        os.environ[f"{name}_env"] = f"{prefix / dest}"
-
-    for name, dest, _ in plist.envs:
-        pkg = plist.packages[name]
-        for path in (plist.prefix / dest).glob("*/manifest"):
-            if path.read_text() == pkg.manifest:
-                os.environ[f"{name}_env_version"] = path.parent.name
-                break
-
     print(f"{os.environ['PATH']=}")
     sys.exit(pytest.main([str(testpath), *args]))

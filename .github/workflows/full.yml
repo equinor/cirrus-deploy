@@ -16,9 +16,7 @@ jobs:
         python-version: "3.11"
     - name: Install dependencies
       run: pip install .
-    - name: Build environment
-      run: deploy build
-    - name: Test environment
-      run: deploy test
-    - name: Make links
-      run: deploy links
+    - name: Build cirrus
+      run: deploy build examples/full/cirrus.config.yaml
+    - name: Build runcirrus
+      run: deploy build examples/full/runcirrus.config.yaml

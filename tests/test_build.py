@@ -8,11 +8,9 @@ from unittest.mock import patch
 @pytest.fixture
 def base_config():
     return {
-        "paths": {"store": Path()},
-        "builds": [],
-        "envs": [],
-        "areas": [],
-        "links": {},
+        "main-package": "",
+        "entrypoint": "",
+        "packages": [],
     }
 
 
@@ -57,7 +55,7 @@ def test_single_package(
     tmp_path, base_config, config_update, script_content, expected_hash
 ):
     (tmp_path / "some_file").write_text("Some text")
-    base_config["builds"].append(
+    base_config["packages"].append(
         {
             "name": "A",
             "version": "0.0",
@@ -108,7 +106,7 @@ def test_package_dependency(
     script_content_B,
     expected_hash_B,
 ):
-    base_config["builds"] = [
+    base_config["packages"] = [
         {
             "name": "A",
             "version": "0.0",
@@ -143,7 +141,7 @@ def test_clean_package_cache_on_rebuild(
     tmp_path, base_config, config_update, script_content
 ):
     with patch("deploy.commands.build.subprocess") as mocked_subprocess:
-        base_config["builds"].append(
+        base_config["packages"].append(
             {
                 "name": "A",
                 "version": "0.0",
@@ -176,27 +174,27 @@ def test_clean_package_cache_on_rebuild(
 
 
 def test_not_overwrite_user_set_links_with_default(tmp_path, base_config):
-    base_config["builds"].append(
+    base_config["packages"].append(
         {"name": "test", "version": "1.0.0", "build": "mkdir -p $out/bin\n"}
     )
-    base_config["envs"].append({"name": "test", "dest": "versions"})
+    base_config["main-package"] = "test"
 
     config = Config.model_validate(base_config)
     builder = Build(tmp_path, config, extra_scripts=tmp_path, prefix=tmp_path)
     builder.build()
 
-    stable_link = tmp_path / "versions" / "stable"
-    latest_link = tmp_path / "versions" / "latest"
+    stable_link = tmp_path / "stable"
+    latest_link = tmp_path / "latest"
 
     assert str(stable_link.readlink()) == "latest"
     assert str(latest_link.readlink()) == "1.0.0-1"
     assert stable_link.resolve() == latest_link.resolve()
 
     # Now we create a new build with a new version, but we set the stable link to point to the old version
-    base_config["builds"] = [
+    base_config["packages"] = [
         {"name": "test", "version": "1.0.1", "build": "mkdir -p $out/bin\n"}
     ]
-    base_config["links"] = {"versions": {"stable": "1.0.0"}}
+    base_config["links"] = {"stable": "1.0.0"}
 
     config = Config.model_validate(base_config)
     builder = Build(tmp_path, config, extra_scripts=tmp_path, prefix=tmp_path)

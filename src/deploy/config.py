@@ -1,7 +1,7 @@
 from __future__ import annotations
 from typing import Annotated, Literal
 
-from pydantic import BaseModel, field_validator, Field
+from pydantic import BaseModel, ConfigDict, field_validator, Field
 from pathlib import Path
 import yaml
 
@@ -27,34 +27,27 @@ class BuildConfig(BaseModel):
     build: str
 
 
-class EnvConfig(BaseModel):
-    name: str
-    dest: str
-    entrypoint: str | None = None
-
-
-class PathConfig(BaseModel):
-    store: Path
-
-    @field_validator("store")
-    @classmethod
-    def _validate_path(cls, value: Path) -> Path:
-        if value.is_absolute():
-            raise ValueError(f"Path {value} must be relative")
-        return value
-
-
 class AreaConfig(BaseModel):
     name: str
     host: str
 
 
 class Config(BaseModel):
-    paths: PathConfig
-    builds: list[BuildConfig]
-    envs: list[EnvConfig]
+    model_config = ConfigDict(alias_generator=(lambda x: x.replace("_", "-")))
+
+    main_package: str
+    entrypoint: Path
+
+    packages: list[BuildConfig]
     areas: list[AreaConfig] = Field(default_factory=list)
-    links: dict[str, dict[str, str]]
+    links: dict[str, str] = Field(default_factory=dict)
+
+    @field_validator("entrypoint")
+    @classmethod
+    def validate_entrypoint_is_relative(cls, value: Path) -> Path:
+        if value.is_absolute():
+            raise ValueError(f"Entrypoint {value} must be a relative path")
+        return value
 
 
 def load_config(path: Path) -> Config:

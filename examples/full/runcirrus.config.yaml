@@ -1,0 +1,14 @@
+main-package: runcirrus
+entrypoint: bin/runcirrus
+
+packages:
+  - name: runcirrus
+    version: 1.0.0
+    src:
+      type: git
+      url: https://github.com/equinor/runcirrus.git
+      ref: 757559903905fd7bc0725c69382ca24efd53ade4
+
+    build: |
+      python3.11 -m venv $out
+      $out/bin/pip install $src
