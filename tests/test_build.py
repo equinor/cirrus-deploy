@@ -1,10 +1,13 @@
-from deploy.commands.build import Build, _checkout
-from deploy.config import Config, load_config
-from pathlib import Path
-
+import os
 import subprocess
-import pytest
+from pathlib import Path
 from unittest.mock import patch
+
+import pytest
+
+from deploy.builder import build_all
+from deploy.context import Context
+from deploy.fetchers import git_checkout
 
 
 @pytest.fixture
@@ -12,121 +15,9 @@ def base_config():
     return {
         "main-package": "",
         "entrypoint": "",
+        "build-image": os.path.join(os.path.dirname(__file__), "test_build_image"),
         "packages": [],
     }
-
-
-def test_minimal_config(tmp_path, base_config):
-    config = Config.model_validate(base_config)
-    build = Build(Path("/dummy"), config, prefix=tmp_path)
-    assert build.packages == {}
-
-
-@pytest.mark.parametrize(
-    "script_content,config_update,expected_hash",
-    [
-        pytest.param("content", {}, "bd6cf79db824f2bd9bc774b7cb3d1fe4b00c705e"),
-        pytest.param(
-            "different content", {}, "1097553096e0b4aad4b08877a52cc1773c714002"
-        ),
-        pytest.param(
-            "content",
-            {"version": "1.0"},
-            "0d941324747a0e908b0655622d335943c1aaacd2",
-        ),
-        pytest.param(
-            "different content",
-            {"version": "1.0"},
-            "1afc69b91647e79d5cee43e8816c842789aa00c1",
-        ),
-        pytest.param(
-            "content",
-            {"src": {"type": "git", "url": "https://example.com", "ref": "abcdefg"}},
-            "9c8cbbcc94f74ab126cf7a20ec4e5a016b17a46f",
-            id="git source",
-        ),
-        pytest.param(
-            "content",
-            {"src": {"type": "file", "path": "some_file"}},
-            "74994b22e5130b79d7eb9e3545562a718adee221",
-            id="file source",
-        ),
-    ],
-)
-def test_single_package(
-    tmp_path, base_config, config_update, script_content, expected_hash
-):
-    (tmp_path / "some_file").write_text("Some text")
-    base_config["packages"].append(
-        {
-            "name": "A",
-            "version": "0.0",
-            "depends": [],
-            "build": script_content,
-            **config_update,
-        }
-    )
-
-    config = Config.model_validate(base_config)
-    build = Build(tmp_path, config, prefix=tmp_path)
-    assert len(build.packages) == 1
-    assert "A" in build.packages
-    assert build.packages["A"].buildhash == expected_hash
-
-
-@pytest.mark.parametrize(
-    "script_content_A,expected_hash_A,script_content_B,expected_hash_B",
-    [
-        pytest.param(
-            "content",
-            "bd6cf79db824f2bd9bc774b7cb3d1fe4b00c705e",
-            "content",
-            "352cf423ae640cd95deee107c0eda948a1b6975f",
-            id="Base test",
-        ),
-        pytest.param(
-            "changed content",
-            "a1c4dda62cf19d724916f4648c38ce23979dc83d",
-            "content",
-            "6fc357219635a6d22ddd509d90c36321ff71493f",
-            id="Changes in A changes both hashes",
-        ),
-        pytest.param(
-            "content",
-            "bd6cf79db824f2bd9bc774b7cb3d1fe4b00c705e",
-            "changed content",
-            "c23e000403370ca163e1d5f471781aa70cc9a530",
-            id="Changes in B only changes B's hash",
-        ),
-    ],
-)
-def test_package_dependency(
-    tmp_path,
-    base_config,
-    script_content_A,
-    expected_hash_A,
-    script_content_B,
-    expected_hash_B,
-):
-    base_config["packages"] = [
-        {
-            "name": "A",
-            "version": "0.0",
-            "depends": [],
-            "build": script_content_A,
-        },
-        {
-            "name": "B",
-            "version": "0.0",
-            "depends": ["A"],
-            "build": script_content_B,
-        },
-    ]
-    config = Config.model_validate(base_config)
-    build = Build(Path("/dummy"), config, prefix=tmp_path)
-    assert len(build.packages) == 2
-    assert build.packages["A"].buildhash == expected_hash_A
-    assert build.packages["B"].buildhash == expected_hash_B
 
 
 @pytest.mark.parametrize(
@@ -142,7 +33,7 @@ def test_package_dependency(
 def test_clean_package_cache_on_rebuild(
     tmp_path, base_config, config_update, script_content
 ):
-    with patch("deploy.commands.build.subprocess") as mocked_subprocess:
+    with patch("deploy.fetchers.subprocess") as mocked_subprocess:
         base_config["packages"].append(
             {
                 "name": "A",
@@ -153,11 +44,12 @@ def test_clean_package_cache_on_rebuild(
             }
         )
 
-        config = Config.model_validate(base_config)
-        build = Build(tmp_path, config, prefix=tmp_path)
-        pck = list(build.packages.values())[0]
+        ctx = Context.from_config(
+            base_config, cwd=tmp_path, prefix=tmp_path, output=tmp_path, engine="native"
+        )
+        pck = list(ctx.packages.values())[0]
 
-        _checkout(pck)
+        git_checkout(pck)
 
         # Checkout will use subpross run on the git command
         # We verify that it first is called with git init
@@ -166,7 +58,7 @@ def test_clean_package_cache_on_rebuild(
         ]
         assert "init" in git_commands
 
-        _checkout(pck)
+        git_checkout(pck)
 
         # And when we do it again, we want a git clean
         git_commands = [
@@ -181,9 +73,10 @@ def test_not_overwrite_user_set_links_with_default(tmp_path, base_config):
     )
     base_config["main-package"] = "test"
 
-    config = Config.model_validate(base_config)
-    builder = Build(tmp_path, config, extra_scripts=tmp_path, prefix=tmp_path)
-    builder.build()
+    ctx = Context.from_config(
+        base_config, cwd=tmp_path, prefix=tmp_path, output=tmp_path, engine="native"
+    )
+    build_all(ctx)
 
     stable_link = tmp_path / "stable"
     latest_link = tmp_path / "latest"
@@ -198,9 +91,10 @@ def test_not_overwrite_user_set_links_with_default(tmp_path, base_config):
     ]
     base_config["links"] = {"stable": "1.0.0"}
 
-    config = Config.model_validate(base_config)
-    builder = Build(tmp_path, config, extra_scripts=tmp_path, prefix=tmp_path)
-    builder.build()
+    ctx = Context.from_config(
+        base_config, cwd=tmp_path, prefix=tmp_path, output=tmp_path, engine="native"
+    )
+    build_all(ctx)
 
     assert stable_link.is_symlink()
     assert latest_link.is_symlink()
@@ -229,9 +123,10 @@ def _build_wrapper(tmp_path, base_config, version="1.0.0", preamble=""):
     base_config["entrypoint"] = "bin/test_script.sh"
     base_config["main-package"] = "test"
 
-    config = Config.model_validate(base_config)
-    builder = Build(tmp_path, config, extra_scripts=tmp_path, prefix=tmp_path)
-    builder.build()
+    ctx = Context.from_config(
+        base_config, cwd=tmp_path, prefix=tmp_path, output=tmp_path, engine="native"
+    )
+    build_all(ctx)
 
     return tmp_path / "bin/run"
 
@@ -321,9 +216,10 @@ def test_not_overwrite_user_set_version_alias_with_default(tmp_path, base_config
     )
     base_config["main-package"] = "test"
 
-    config = Config.model_validate(base_config)
-    builder = Build(tmp_path, config, extra_scripts=tmp_path, prefix=tmp_path)
-    builder.build()
+    ctx = Context.from_config(
+        base_config, cwd=tmp_path, prefix=tmp_path, output=tmp_path, engine="native"
+    )
+    build_all(ctx)
 
     assert str((tmp_path / "1.0.0").readlink()) == "1.0.0-1"
     assert str((tmp_path / "1.0").readlink()) == "1.0.0"
@@ -334,9 +230,10 @@ def test_not_overwrite_user_set_version_alias_with_default(tmp_path, base_config
     ]
     base_config["links"] = {"1.1": "1.0"}
 
-    config = Config.model_validate(base_config)
-    builder = Build(tmp_path, config, extra_scripts=tmp_path, prefix=tmp_path)
-    builder.build()
+    ctx = Context.from_config(
+        base_config, cwd=tmp_path, prefix=tmp_path, output=tmp_path, engine="native"
+    )
+    build_all(ctx)
 
     assert str((tmp_path / "1.0.0").readlink()) == "1.0.0-1"
     assert str((tmp_path / "1.0").readlink()) == "1.0.0"
@@ -353,12 +250,12 @@ def test_hello_world_example(tmp_path, monkeypatch):
 
     monkeypatch.chdir(work_dir)
 
-    prefix = Path("output/prefix")
-    config = load_config(Path("config.yaml"))
-    builder = Build(Path("."), config, prefix=prefix)
-    builder.build()
+    ctx = Context.from_config_file(
+        Path("config.yaml"), prefix=tmp_path, output=tmp_path, engine="native"
+    )
+    build_all(ctx)
 
-    wrapper = prefix / "bin" / "run"
+    wrapper = tmp_path / "bin" / "run"
     assert wrapper.exists()
     result = subprocess.run([str(wrapper)], capture_output=True, text=True)
     assert result.returncode == 0

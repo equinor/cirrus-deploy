@@ -9,7 +9,9 @@ _LINE = re.compile("[\r\n]")
 
 
 async def redirect_output(
-    label: str, stream: asyncio.StreamReader | None, *fds: Any
+    label: str,
+    stream: asyncio.StreamReader | None,
+    *fds: Any,
 ) -> None:
     if stream is None:
         return
