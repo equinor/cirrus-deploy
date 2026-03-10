@@ -25,3 +25,4 @@ devenv.local.nix
 
 # Output from Karsk
 output/
+venv

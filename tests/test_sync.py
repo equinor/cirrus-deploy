@@ -2,11 +2,12 @@ import filecmp
 import os
 from subprocess import CalledProcessError
 from pathlib import Path
+from deploy.builder import build_all
 import pytest
 
 from deploy.config import Config
-from deploy.commands.build import Build
 from deploy.commands.sync import Sync, do_sync, change_prefix
+from deploy.context import Context
 
 BUILD_SCRIPT = """\
 mkdir $out/bin
@@ -33,6 +34,7 @@ def fake_ssh(monkeypatch: pytest.MonkeyPatch) -> None:
 def base_config():
     config = {
         "main-package": "A",
+        "build-image": "test_build_image",
         "entrypoint": "",
         "packages": [
             {
@@ -45,14 +47,14 @@ def base_config():
         "areas": [{"name": "destination", "host": "example.com"}],
     }
 
-    config = Config.model_validate(config)
+    config = Config.model_validate(config, context={"cwd": os.path.dirname(__file__)})
     return config
 
 
-def _deploy_config(config, configpath, prefix=None):
-    builder = Build(configpath, config, prefix=prefix or configpath)
-    builder.build()
-    return builder
+def _deploy_config(config, prefix=None):
+    context = Context(config, prefix=prefix, output=prefix, engine="native")
+    build_all(context)
+    return context
 
 
 @pytest.mark.parametrize(
@@ -97,9 +99,9 @@ def test_successful_sync(tmp_path, base_config):
     assert installed_file_path.exists()
 
     do_sync(
-        configpath=tmp_path,
         config=base_config,
         prefix=tmp_path,
+        output=tmp_path,
         dest_prefix=destination,
     )
 
@@ -114,8 +116,8 @@ def test_failing_sync(tmp_path, base_config):
     _deploy_config(base_config, tmp_path)
     with pytest.raises(CalledProcessError):
         do_sync(
-            configpath=tmp_path,
             config=base_config,
             prefix=tmp_path,
+            output=tmp_path,
             dest_prefix=Path("/non-existent/destination"),
         )

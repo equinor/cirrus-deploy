@@ -5,20 +5,22 @@ from pathlib import Path
 import networkx as nx
 
 from deploy.config import Config
+from deploy.engine import VolumeBind
 from deploy.package import Package
 
 
 class PackageList:
     def __init__(
         self,
-        configpath: Path,
         config: Config,
         *,
         prefix: Path,
+        output: Path,
         check_existence: bool = True,
     ) -> None:
         self.prefix: Path = prefix
-        self.storepath: Path = prefix / ".store"
+        self.storepath: Path = output / Path(".store")
+        self.final_storepath: Path = prefix / ".store"
         self.config: Config = config
         buildmap = {x.name: x for x in config.packages}
 
@@ -34,14 +36,27 @@ class PackageList:
         for node in nx.topological_sort(graph):
             build = buildmap[node]
             self.packages[node] = Package(
-                configpath,
                 self.storepath,
+                self.final_storepath,
                 build,
                 [self.packages[x] for x in build.depends],
+                build.build_image or config.build_image,
+                output / "cache",
             )
 
         if check_existence:
             self._check_existence()
+
+    def volumes(self, package_names: list[str]) -> list[VolumeBind]:
+        pnames = set(package_names)
+        for pname in package_names:
+            pkg = self.packages[pname]
+            pnames |= set(p.config.name for p in pkg.depends)
+
+        return [
+            (pkg.out, pkg.final_out, "ro")
+            for pkg in (self.packages[pname] for pname in pnames)
+        ]
 
     def _check_existence(self) -> None:
         for pkg in self.packages.values():

@@ -1,5 +1,6 @@
 main-package: hello
 entrypoint: bin/binary.sh
+build-image: Containerfile
 
 packages:
   - name: hello

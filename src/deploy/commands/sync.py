@@ -10,6 +10,7 @@ from pathlib import Path
 
 import click
 
+from deploy.commands._common import argument_config_file, option_output, option_prefix
 from deploy.config import Config, AreaConfig, load_config
 from deploy.package_list import PackageList
 from deploy.utils import redirect_output
@@ -159,14 +160,14 @@ class Sync:
 
 
 async def _sync(
-    configpath: Path,
     config: Config,
     prefix: Path,
+    output: Path,
     dest_prefix: Path | None,
     no_async: bool,
     dry_run: bool,
 ) -> None:
-    plist = PackageList(configpath, config, prefix=prefix)
+    plist = PackageList(config, prefix=prefix, output=output)
     syncer = Sync(prefix / ".store", plist, dry_run=dry_run, dest_prefix=dest_prefix)
 
     if no_async:
@@ -185,27 +186,21 @@ async def _sync(
 
 
 def do_sync(
-    configpath: Path,
     config: Config,
     *,
     prefix: Path,
+    output: Path,
     dest_prefix: Path | None = None,
     no_async: bool = False,
     dry_run: bool = False,
 ) -> None:
-    asyncio.run(_sync(configpath, config, prefix, dest_prefix, no_async, dry_run))
+    asyncio.run(_sync(config, prefix, output, dest_prefix, no_async, dry_run))
 
 
 @click.command("sync", help="Synchronise all locations")
-@click.argument(
-    "config-file",
-    type=Path,
-)
-@click.option(
-    "--prefix",
-    default="./output/prefix",
-    type=Path,
-)
+@argument_config_file
+@option_prefix
+@option_output
 @click.option(
     "--no-async",
     help="Don't deploy asynchronously",
@@ -218,13 +213,13 @@ def do_sync(
     default=False,
 )
 def subcommand_sync(
-    config_file: Path, prefix: Path, no_async: bool, dry_run: bool
+    config_file: Path, prefix: Path, output: Path, no_async: bool, dry_run: bool
 ) -> None:
     config = load_config(config_file)
     do_sync(
-        config_file.parent,
         config,
         prefix=prefix,
+        output=output,
         no_async=no_async,
         dry_run=dry_run,
     )

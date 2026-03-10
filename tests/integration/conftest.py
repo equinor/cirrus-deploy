@@ -1,11 +1,12 @@
 from __future__ import annotations
 import os
 from pathlib import Path
-from deploy.commands.build import Build
 from deploy.config import Config
 import pytest
 import subprocess
 import shutil
+
+from deploy.context import Context
 
 
 DIR = Path(os.path.dirname(__file__))
@@ -86,6 +87,7 @@ def config(tmp_path: Path, git_foo: Git, git_bar: Git) -> Config:
 
     base_config = {
         "main-package": "bar",
+        "build-image": os.path.join(os.path.dirname(__file__), "Containerfile"),
         "entrypoint": "",
         "paths": {
             "store": "versions/.store",
@@ -98,10 +100,5 @@ def config(tmp_path: Path, git_foo: Git, git_bar: Git) -> Config:
 
 
 @pytest.fixture
-def build(tmp_path: Path, config: Config) -> Build:
-    return Build(
-        Path("/dev/null"),
-        config,
-        force=False,
-        prefix=tmp_path / "output",
-    )
+def context(tmp_path: Path, config: Config) -> Context:
+    return Context(config, prefix=Path("/opt/test"), output=tmp_path)

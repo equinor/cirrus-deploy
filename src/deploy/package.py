@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import hashlib
-from functools import cached_property, lru_cache
+from functools import cached_property
 from pathlib import Path
 
 from deploy.config import BuildConfig, FileConfig, GitConfig
@@ -10,25 +10,22 @@ from deploy.config import BuildConfig, FileConfig, GitConfig
 SCRIPTS = Path(__file__).parent / "scripts"
 
 
-@lru_cache
-def get_cache_path() -> Path:
-    path = Path("./output/cache").resolve()
-    path.mkdir(exist_ok=True, parents=True)
-    return path
-
-
 class Package:
     def __init__(
         self,
-        configpath: Path,
         storepath: Path,
+        final_storepath: Path,
         config: BuildConfig,
         depends: list[Package],
+        build_image: Path,
+        cache: Path,
     ) -> None:
-        self.configpath = configpath
-        self.storepath = storepath
+        self.storepath = storepath.absolute()
+        self.final_storepath = final_storepath.absolute()
         self.config = config
+        self.cache = cache
         self.depends = depends
+        self.build_image: Path = build_image
 
     @property
     def fullname(self) -> str:
@@ -39,13 +36,18 @@ class Package:
         return self.storepath / f"{self.buildhash}-{self.fullname}"
 
     @property
+    def final_out(self) -> Path:
+        return self.final_storepath / f"{self.buildhash}-{self.fullname}"
+
+    @property
     def src(self) -> Path | None:
         if self.config.src is None:
             return None
         elif isinstance(self.config.src, GitConfig):
-            return get_cache_path() / f"{self.config.name}-{self.config.src.ref}.git"
+            return self.cache / f"{self.config.name}-{self.config.src.ref}.git"
         elif isinstance(self.config.src, FileConfig):
-            return self.configpath / self.config.src.path
+            assert self.config.src.fullpath is not None
+            return self.config.src.fullpath
         else:
             raise RuntimeError("Unknown self.config.src type")
 
