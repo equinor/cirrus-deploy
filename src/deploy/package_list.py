@@ -18,7 +18,8 @@ class PackageList:
         check_existence: bool = True,
     ) -> None:
         self.prefix: Path = prefix
-        self.storepath: Path = prefix / ".store"
+        self.storepath: Path = Path("output/store")
+        self.final_storepath: Path = prefix / ".store"
         self.config: Config = config
         buildmap = {x.name: x for x in config.packages}
 
@@ -36,8 +37,10 @@ class PackageList:
             self.packages[node] = Package(
                 configpath,
                 self.storepath,
+                self.final_storepath,
                 build,
                 [self.packages[x] for x in build.depends],
+                build.build_image or config.build_image,
             )
 
         if check_existence:
