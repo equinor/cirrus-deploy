@@ -208,17 +208,22 @@ def test_not_overwrite_user_set_links_with_default(tmp_path, base_config):
     assert str(latest_link.readlink()) == "1.0.1-1"
 
 
-def test_functional_wrapper_script(tmp_path, base_config):
-    (tmp_path / "test_script.sh").write_text(
-        "echo Hello World", encoding="utf-8", newline="\n"
-    )
+def _build_wrapper(tmp_path, base_config, version="1.0.0", preamble=""):
+    script = "#!/usr/bin/env bash\n"
+    if preamble:
+        script += f"{preamble}\n"
+    script += 'echo "$@"'
+    (tmp_path / "test_script.sh").write_text(script, encoding="utf-8", newline="\n")
 
     base_config["packages"].append(
         {
             "name": "test",
-            "version": "1.0.0",
+            "version": version,
             "src": {"type": "file", "path": str(tmp_path / "test_script.sh")},
-            "build": "mkdir -p $out/bin\ncp $src $out/bin/\nchmod +x $out/bin/test_script.sh",
+            "build": """
+            mkdir -p $out/bin
+            cp $src $out/bin/
+            chmod +x $out/bin/test_script.sh""",
         }
     )
     base_config["entrypoint"] = "bin/test_script.sh"
@@ -228,10 +233,86 @@ def test_functional_wrapper_script(tmp_path, base_config):
     builder = Build(tmp_path, config, extra_scripts=tmp_path, prefix=tmp_path)
     builder.build()
 
-    result = subprocess.run([tmp_path / "bin/run"], capture_output=True, text=True)
+    return tmp_path / "bin/run"
 
+
+def test_functional_wrapper_script(tmp_path, base_config):
+    wrapper = _build_wrapper(tmp_path, base_config)
+
+    result = subprocess.run([wrapper], capture_output=True, text=True)
     assert result.returncode == 0
-    assert result.stdout.strip() == "Hello World"
+    assert result.stdout.strip() == ""
+
+    result = subprocess.run([wrapper, "-v", "stable"], capture_output=True, text=True)
+    assert result.returncode == 0
+    assert result.stdout.strip() == ""
+
+    result = subprocess.run(
+        [wrapper, "-arg", "value", "-v", "stable", "pos_arg"],
+        capture_output=True,
+        text=True,
+    )
+    assert result.returncode == 0
+    assert result.stdout.strip() == "-arg value pos_arg"
+
+
+def test_version_selection(tmp_path, base_config):
+    _build_wrapper(tmp_path, base_config, version="1.0.0", preamble='printf "v1 "')
+
+    base_config["packages"] = []
+    wrapper = _build_wrapper(
+        tmp_path, base_config, version="2.0.0", preamble='printf "v2 "'
+    )
+
+    result = subprocess.run([wrapper], capture_output=True, text=True)
+    assert result.returncode == 0
+    assert result.stdout.strip() == "v2"
+
+    result = subprocess.run([wrapper, "-v", "1.0.0"], capture_output=True, text=True)
+    assert result.returncode == 0
+    assert result.stdout.strip() == "v1"
+
+    result = subprocess.run([wrapper, "-v", "2.0.0"], capture_output=True, text=True)
+    assert result.returncode == 0
+    assert result.stdout.strip() == "v2"
+
+    result = subprocess.run(
+        [wrapper, "-v", "1.0.0", "arg1", "arg2"], capture_output=True, text=True
+    )
+    assert result.returncode == 0
+    assert result.stdout.strip() == "v1 arg1 arg2"
+
+    result = subprocess.run(
+        [wrapper, "-v", "2.0.0", "arg1", "arg2"], capture_output=True, text=True
+    )
+    assert result.returncode == 0
+    assert result.stdout.strip() == "v2 arg1 arg2"
+
+
+def test_wrapper_print_versions(tmp_path, base_config):
+    _build_wrapper(tmp_path, base_config, version="1.0.0")
+    _build_wrapper(tmp_path, base_config, version="1.1.0")
+    _build_wrapper(tmp_path, base_config, version="1.1.1")
+
+    base_config["links"] = {"something": "1.0"}
+    wrapper = _build_wrapper(tmp_path, base_config, version="2.0.0")
+
+    result = subprocess.run(
+        [wrapper, "--print-versions"], capture_output=True, text=True
+    )
+    assert result.returncode == 0
+
+    lines = result.stdout.strip().splitlines()
+    expected = """stable -> latest
+something -> 1.0
+latest -> 2.0.0-1
+2 -> 2.0
+2.0 -> 2.0.0
+1 -> 1.1
+1.1 -> 1.1.1
+1.0 -> 1.0.0"""
+
+    assert "\n".join(lines) == expected, f"Unexpected output:\n{result.stdout}"
 
 
 def test_not_overwrite_user_set_version_alias_with_default(tmp_path, base_config):
