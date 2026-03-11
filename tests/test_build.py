@@ -232,3 +232,30 @@ def test_functional_wrapper_script(tmp_path, base_config):
 
     assert result.returncode == 0
     assert result.stdout.strip() == "Hello World"
+
+
+def test_not_overwrite_user_set_version_alias_with_default(tmp_path, base_config):
+    base_config["packages"].append(
+        {"name": "test", "version": "1.0.0", "build": "mkdir -p $out/bin\n"}
+    )
+    base_config["main-package"] = "test"
+
+    config = Config.model_validate(base_config)
+    builder = Build(tmp_path, config, extra_scripts=tmp_path, prefix=tmp_path)
+    builder.build()
+
+    assert str((tmp_path / "1.0").readlink()) == "1.0.0-1"
+    assert str((tmp_path / "1").readlink()) == "1.0"
+
+    base_config["packages"] = [
+        {"name": "test", "version": "1.1.0", "build": "mkdir -p $out/bin\n"}
+    ]
+    base_config["links"] = {"1.1": "1.0"}
+
+    config = Config.model_validate(base_config)
+    builder = Build(tmp_path, config, extra_scripts=tmp_path, prefix=tmp_path)
+    builder.build()
+
+    assert str((tmp_path / "1.0").readlink()) == "1.0.0-1"
+    assert str((tmp_path / "1.1").readlink()) == "1.0"
+    assert str((tmp_path / "1").readlink()) == "1.1"
