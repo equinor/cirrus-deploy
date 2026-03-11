@@ -21,6 +21,24 @@ from deploy.utils import redirect_output
 from deploy.links import make_links
 
 
+SCRIPT_TEMPLATE = """#!/usr/bin/env bash
+# Auto-generated wrapper script for {package_name}
+
+VERSION="${{1:-stable}}"
+BASE_DIR="$(dirname "$(dirname "$(readlink -f "${{BASH_SOURCE[0]}}")")")"
+VERSIONS_DIR="$BASE_DIR/{prefix}"
+
+ENTRY_POINT="$VERSIONS_DIR/$VERSION/{entrypoint}"
+
+if [ ! -f "$ENTRY_POINT" ]; then
+    echo "Error: Entry point not found: $ENTRY_POINT" >&2
+    exit 1
+fi
+
+exec "$ENTRY_POINT" "${{@:2}}"
+"""
+
+
 def _checkout(pkg: Package) -> None:
     if not isinstance(gitconf := pkg.config.src, GitConfig) or pkg.src is None:
         return
@@ -215,24 +233,13 @@ class Build:
 
         wrapper_script = bin_dir / "run"
 
-        script_content = f"""#!/usr/bin/env bash
-# Auto-generated wrapper script for {self.config.main_package}
-
-VERSION="${{1:-stable}}"
-BASE_DIR="$(dirname "$(dirname "$(readlink -f "${{BASH_SOURCE[0]}}")")")"
-VERSIONS_DIR="$BASE_DIR/{self.package_list.prefix}"
-
-ENTRY_POINT="$VERSIONS_DIR/$VERSION/{self.config.entrypoint}"
-
-if [ ! -f "$ENTRY_POINT" ]; then
-    echo "Error: Entry point not found: $ENTRY_POINT" >&2
-    exit 1
-fi
-
-exec "$ENTRY_POINT" "${{@:2}}"
-"""
-
-        wrapper_script.write_text(script_content)
+        wrapper_script.write_text(
+            SCRIPT_TEMPLATE.format(
+                package_name=self.config.main_package,
+                prefix=self.package_list.prefix,
+                entrypoint=self.config.entrypoint,
+            )
+        )
         wrapper_script.chmod(0o755)
 
 
