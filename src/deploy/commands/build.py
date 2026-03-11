@@ -24,8 +24,45 @@ from deploy.links import make_links
 SCRIPT_TEMPLATE = """#!/usr/bin/env bash
 # Auto-generated wrapper script for {package_name}
 
-VERSION="${{1:-stable}}"
+VERSION="stable"
+PRINT_VERSIONS=false
+FORWARD_ARGS=()
+
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        -v)
+            VERSION="${{2:?"-v requires a version argument"}}"
+            shift 2
+            ;;
+        --print-versions)
+            PRINT_VERSIONS=true
+            shift
+            ;;
+        *)
+            FORWARD_ARGS+=("$1")
+            shift
+            ;;
+    esac
+done
+
 BASE_DIR="$(dirname "$(dirname "$(readlink -f "${{BASH_SOURCE[0]}}")")")"
+
+if [ "$PRINT_VERSIONS" = true ]; then
+    VERSIONS=()
+    ALIASES=()
+    for entry in $(ls -1 "$BASE_DIR"); do
+        [[ "$entry" == "bin" || "$entry" == .* ]] && continue
+        if [ -L "$BASE_DIR/$entry" ]; then
+            ALIASES+=("$entry -> $(readlink "$BASE_DIR/$entry")")
+        elif [ -d "$BASE_DIR/$entry" ]; then
+            VERSIONS+=("$entry")
+        fi
+    done
+    IFS=$'\n' ALIASES=($(sort -rV <<< "${{ALIASES[*]}}")); unset IFS
+    IFS=$'\n' VERSIONS=($(sort -rV <<< "${{VERSIONS[*]}}")); unset IFS
+    printf '%s\n' "${{ALIASES[@]}}" "${{VERSIONS[@]}}"
+    exit 0
+fi
 
 ENTRY_POINT="$BASE_DIR/$VERSION/{entrypoint}"
 
@@ -34,7 +71,7 @@ if [ ! -f "$ENTRY_POINT" ]; then
     exit 1
 fi
 
-exec "$ENTRY_POINT" "${{@:2}}"
+exec "$ENTRY_POINT" "${{FORWARD_ARGS[@]}}"
 """
 
 
