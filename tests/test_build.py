@@ -1,6 +1,8 @@
 from deploy.commands.build import Build, _checkout
 from deploy.config import Config
 from pathlib import Path
+
+import subprocess
 import pytest
 from unittest.mock import patch
 
@@ -204,3 +206,29 @@ def test_not_overwrite_user_set_links_with_default(tmp_path, base_config):
     assert latest_link.is_symlink()
     assert str(stable_link.readlink()) == "1.0.0"
     assert str(latest_link.readlink()) == "1.0.1-1"
+
+
+def test_functional_wrapper_script(tmp_path, base_config):
+    (tmp_path / "test_script.sh").write_text(
+        "echo Hello World", encoding="utf-8", newline="\n"
+    )
+
+    base_config["packages"].append(
+        {
+            "name": "test",
+            "version": "1.0.0",
+            "src": {"type": "file", "path": str(tmp_path / "test_script.sh")},
+            "build": "mkdir -p $out/bin\ncp $src $out/bin/\nchmod +x $out/bin/test_script.sh",
+        }
+    )
+    base_config["entrypoint"] = "bin/test_script.sh"
+    base_config["main-package"] = "test"
+
+    config = Config.model_validate(base_config)
+    builder = Build(tmp_path, config, extra_scripts=tmp_path, prefix=tmp_path)
+    builder.build()
+
+    result = subprocess.run([tmp_path / "bin/run"], capture_output=True, text=True)
+
+    assert result.returncode == 0
+    assert result.stdout.strip() == "Hello World"
