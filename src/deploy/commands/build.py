@@ -26,9 +26,8 @@ SCRIPT_TEMPLATE = """#!/usr/bin/env bash
 
 VERSION="${{1:-stable}}"
 BASE_DIR="$(dirname "$(dirname "$(readlink -f "${{BASH_SOURCE[0]}}")")")"
-VERSIONS_DIR="$BASE_DIR/{prefix}"
 
-ENTRY_POINT="$VERSIONS_DIR/$VERSION/{entrypoint}"
+ENTRY_POINT="$BASE_DIR/$VERSION/{entrypoint}"
 
 if [ ! -f "$ENTRY_POINT" ]; then
     echo "Error: Entry point not found: $ENTRY_POINT" >&2
@@ -236,7 +235,6 @@ class Build:
         wrapper_script.write_text(
             SCRIPT_TEMPLATE.format(
                 package_name=self.config.main_package,
-                prefix=self.package_list.prefix,
                 entrypoint=self.config.entrypoint,
             )
         )
