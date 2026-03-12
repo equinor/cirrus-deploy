@@ -45,39 +45,47 @@ def validate(base: Path) -> None:
 
 
 def _get_auto_version_aliases(prefix: Path) -> dict[str, str]:
-    versions: list[tuple[Version, str]] = []
-
     if not prefix.is_dir():
         return {}
 
+    versions: list[tuple[Version, str]] = []
     for name in os.listdir(prefix):
         if name[0] == ".":
             continue
-        path = prefix / name
-        if path.is_symlink():
+        if (prefix / name).is_symlink():
             continue
         try:
             versions.append((Version.parse(name), name))
         except ValueError:
             continue
 
-    minor_aliases: dict[tuple[int, int], tuple[Version, str]] = {}
-    for version, name in versions:
-        key = (version.major, version.minor)
-        if key not in minor_aliases or version > minor_aliases[key][0]:
-            minor_aliases[key] = (version, name)
-
     aliases: dict[str, str] = {}
-    for (major, minor), (_, name) in minor_aliases.items():
-        aliases[f"{major}.{minor}"] = name
 
-    major_aliases: dict[int, tuple[int, str]] = {}
-    for (major, minor), _ in minor_aliases.items():
+    patch_best: dict[tuple[int, int, int], tuple[Version, str]] = {}
+    for version, name in versions:
+        key = (version.major, version.minor, version.patch)
+        if key not in patch_best or version > patch_best[key][0]:
+            patch_best[key] = (version, name)
+
+    for (major, minor, patch), (_, name) in patch_best.items():
+        aliases[f"{major}.{minor}.{patch}"] = name
+
+    minor_best: dict[tuple[int, int], tuple[int, str]] = {}
+    for (major, minor, patch), _ in patch_best.items():
+        alias = f"{major}.{minor}.{patch}"
+        if (major, minor) not in minor_best or patch > minor_best[(major, minor)][0]:
+            minor_best[(major, minor)] = (patch, alias)
+
+    for (major, minor), (_, alias) in minor_best.items():
+        aliases[f"{major}.{minor}"] = alias
+
+    major_best: dict[int, tuple[int, str]] = {}
+    for (major, minor), _ in minor_best.items():
         alias = f"{major}.{minor}"
-        if major not in major_aliases or minor > major_aliases[major][0]:
-            major_aliases[major] = (minor, alias)
+        if major not in major_best or minor > major_best[major][0]:
+            major_best[major] = (minor, alias)
 
-    for major, (_, alias) in major_aliases.items():
+    for major, (_, alias) in major_best.items():
         aliases[str(major)] = alias
 
     return aliases

@@ -244,7 +244,8 @@ def test_not_overwrite_user_set_version_alias_with_default(tmp_path, base_config
     builder = Build(tmp_path, config, extra_scripts=tmp_path, prefix=tmp_path)
     builder.build()
 
-    assert str((tmp_path / "1.0").readlink()) == "1.0.0-1"
+    assert str((tmp_path / "1.0.0").readlink()) == "1.0.0-1"
+    assert str((tmp_path / "1.0").readlink()) == "1.0.0"
     assert str((tmp_path / "1").readlink()) == "1.0"
 
     base_config["packages"] = [
@@ -256,6 +257,7 @@ def test_not_overwrite_user_set_version_alias_with_default(tmp_path, base_config
     builder = Build(tmp_path, config, extra_scripts=tmp_path, prefix=tmp_path)
     builder.build()
 
-    assert str((tmp_path / "1.0").readlink()) == "1.0.0-1"
+    assert str((tmp_path / "1.0.0").readlink()) == "1.0.0-1"
+    assert str((tmp_path / "1.0").readlink()) == "1.0.0"
     assert str((tmp_path / "1.1").readlink()) == "1.0"
     assert str((tmp_path / "1").readlink()) == "1.1"
