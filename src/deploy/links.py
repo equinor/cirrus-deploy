@@ -44,49 +44,48 @@ def validate(base: Path) -> None:
             print(f"'{name}' links to '{target}' which doesn't exist!", file=sys.stderr)
 
 
+def _reduce_aliases(
+    entries: dict[tuple[int, ...], str],
+    aliases: dict[str, str],
+) -> None:
+    if not entries or len(next(iter(entries))) <= 1:
+        return
+
+    best: dict[tuple[int, ...], tuple[int, str]] = {}
+    for key, target in entries.items():
+        group = key[:-1]
+        last = key[-1]
+        if group not in best or last > best[group][0]:
+            best[group] = (last, target)
+
+    next_entries: dict[tuple[int, ...], str] = {}
+    for group, (_, target) in best.items():
+        alias_key = ".".join(str(x) for x in group)
+        aliases[alias_key] = target
+        next_entries[group] = alias_key
+
+    _reduce_aliases(next_entries, aliases)
+
+
 def _get_auto_version_aliases(prefix: Path) -> dict[str, str]:
     if not prefix.is_dir():
         return {}
 
-    versions: list[tuple[Version, str]] = []
+    entries: dict[tuple[int, ...], str] = {}
     for name in os.listdir(prefix):
         if name[0] == ".":
             continue
         if (prefix / name).is_symlink():
             continue
         try:
-            versions.append((Version.parse(name), name))
+            version = Version.parse(name)
         except ValueError:
             continue
+        pre = int(version.prerelease) if version.prerelease else 0
+        entries[(version.major, version.minor, version.patch, pre)] = name
 
     aliases: dict[str, str] = {}
-
-    patch_best: dict[tuple[int, int, int], tuple[Version, str]] = {}
-    for version, name in versions:
-        key = (version.major, version.minor, version.patch)
-        if key not in patch_best or version > patch_best[key][0]:
-            patch_best[key] = (version, name)
-
-    for (major, minor, patch), (_, name) in patch_best.items():
-        aliases[f"{major}.{minor}.{patch}"] = name
-
-    minor_best: dict[tuple[int, int], tuple[int, str]] = {}
-    for (major, minor, patch), _ in patch_best.items():
-        alias = f"{major}.{minor}.{patch}"
-        if (major, minor) not in minor_best or patch > minor_best[(major, minor)][0]:
-            minor_best[(major, minor)] = (patch, alias)
-
-    for (major, minor), (_, alias) in minor_best.items():
-        aliases[f"{major}.{minor}"] = alias
-
-    major_best: dict[int, tuple[int, str]] = {}
-    for (major, minor), _ in minor_best.items():
-        alias = f"{major}.{minor}"
-        if major not in major_best or minor > major_best[major][0]:
-            major_best[major] = (minor, alias)
-
-    for major, (_, alias) in major_best.items():
-        aliases[str(major)] = alias
+    _reduce_aliases(entries, aliases)
 
     return aliases
 
