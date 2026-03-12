@@ -35,40 +35,58 @@ def test_make_links_fail_missing_target(tmp_path, base_config):
 def test_make_links_on_new_package_resolves_latest(tmp_path, base_config):
     base_config["links"] = {"location": {"cool": "^"}}
 
-    (tmp_path / "location" / "1.0.0").mkdir(parents=True)
-    (tmp_path / "location" / "1.0.1").mkdir(parents=True)
+    (tmp_path / "location" / "1.0.0-1").mkdir(parents=True)
+    (tmp_path / "location" / "1.0.1-1").mkdir(parents=True)
 
     make_links(base_config["links"]["location"], prefix=tmp_path / "location")
     assert os.path.islink(tmp_path / "location/cool")
     assert os.path.realpath(tmp_path / "location/cool") == str(
-        (tmp_path / "location" / "1.0.1")
+        (tmp_path / "location" / "1.0.1-1")
     )
 
-    (tmp_path / "location" / "1.0.2").mkdir(parents=True)
+    (tmp_path / "location" / "1.0.2-1").mkdir(parents=True)
     make_links(base_config["links"]["location"], prefix=tmp_path / "location")
     assert os.path.realpath(tmp_path / "location/cool") == str(
-        (tmp_path / "location" / "1.0.2")
+        (tmp_path / "location" / "1.0.2-1")
     )
 
 
 def test_auto_version_aliases_created(tmp_path):
     prefix = tmp_path / "location"
-    (prefix / "1.0.0").mkdir(parents=True)
-    (prefix / "1.1.0").mkdir(parents=True)
-    (prefix / "1.1.1").mkdir(parents=True)
+    (prefix / "1.0.0-1").mkdir(parents=True)
+    (prefix / "1.1.0-1").mkdir(parents=True)
+    (prefix / "1.1.1-1").mkdir(parents=True)
 
     make_links({}, prefix=prefix)
 
+    assert os.readlink(prefix / "1.0.0") == "1.0.0-1"
+    assert os.readlink(prefix / "1.1.0") == "1.1.0-1"
+    assert os.readlink(prefix / "1.1.1") == "1.1.1-1"
     assert os.readlink(prefix / "1.0") == "1.0.0"
     assert os.readlink(prefix / "1.1") == "1.1.1"
     assert os.readlink(prefix / "1") == "1.1"
 
 
+def test_auto_version_aliases_reflects_latest_build(tmp_path):
+    prefix = tmp_path / "location"
+    (prefix / "1.0.0-1").mkdir(parents=True)
+    (prefix / "1.0.0-2").mkdir(parents=True)
+    (prefix / "1.0.1-1").mkdir(parents=True)
+    (prefix / "1.0.1-2").mkdir(parents=True)
+
+    make_links({}, prefix=prefix)
+
+    assert os.readlink(prefix / "1.0.0") == "1.0.0-2"
+    assert os.readlink(prefix / "1.0.1") == "1.0.1-2"
+    assert os.readlink(prefix / "1.0") == "1.0.1"
+    assert os.readlink(prefix / "1") == "1.0"
+
+
 def test_auto_version_aliases_user_override(tmp_path):
     prefix = tmp_path / "location"
-    (prefix / "1.0.0").mkdir(parents=True)
-    (prefix / "1.1.0").mkdir(parents=True)
-    (prefix / "1.1.1").mkdir(parents=True)
+    (prefix / "1.0.0-1").mkdir(parents=True)
+    (prefix / "1.1.0-1").mkdir(parents=True)
+    (prefix / "1.1.1-1").mkdir(parents=True)
 
     make_links({"1.1": "1.1.0"}, prefix=prefix)
 
@@ -78,9 +96,9 @@ def test_auto_version_aliases_user_override(tmp_path):
 
 def test_auto_version_aliases_multiple_majors(tmp_path):
     prefix = tmp_path / "location"
-    (prefix / "1.0.0").mkdir(parents=True)
-    (prefix / "2.0.0").mkdir(parents=True)
-    (prefix / "2.1.0").mkdir(parents=True)
+    (prefix / "1.0.0-1").mkdir(parents=True)
+    (prefix / "2.0.0-1").mkdir(parents=True)
+    (prefix / "2.1.0-1").mkdir(parents=True)
 
     make_links({}, prefix=prefix)
 
