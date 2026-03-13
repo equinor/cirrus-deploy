@@ -22,13 +22,17 @@ class Package:
         self,
         configpath: Path,
         storepath: Path,
+        final_storepath: Path,
         config: BuildConfig,
         depends: list[Package],
+        build_image: Path,
     ) -> None:
         self.configpath = configpath
-        self.storepath = storepath
+        self.storepath = storepath.absolute()
+        self.final_storepath = final_storepath.absolute()
         self.config = config
         self.depends = depends
+        self.build_image: Path = build_image
 
     @property
     def fullname(self) -> str:
@@ -37,6 +41,10 @@ class Package:
     @property
     def out(self) -> Path:
         return self.storepath / f"{self.buildhash}-{self.fullname}"
+
+    @property
+    def final_out(self) -> Path:
+        return self.final_storepath / f"{self.buildhash}-{self.fullname}"
 
     @property
     def src(self) -> Path | None:

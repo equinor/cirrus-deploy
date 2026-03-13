@@ -15,6 +15,7 @@ import shutil
 import click
 
 from deploy.config import Config, GitConfig, load_config
+from deploy.oci import Engine, VolumeBind, get_oci_engine
 from deploy.package import Package
 from deploy.package_list import PackageList
 from deploy.utils import redirect_output
@@ -65,7 +66,7 @@ def _checkout(pkg: Package) -> None:
     git("checkout", "FETCH_HEAD")
 
 
-def _build(pkg: Package, tmp: str) -> None:
+def _build(oci: Engine, pkg: Package, tmp: str) -> None:
     try:
         pkg.out.mkdir()
     except FileExistsError:
@@ -84,15 +85,18 @@ def _build(pkg: Package, tmp: str) -> None:
         shutil.rmtree(pkg.out)
         raise
 
+    volumes: list[VolumeBind] = [(x.out, x.final_out, "ro") for x in pkg.depends]
+    volumes.append((pkg.src, "/tmp/pkgsrc", "rw"))
+    volumes.append((pkg.out, pkg.final_out, "rw"))
+
     env = {
-        **os.environ,
-        **{x.config.name: str(x.out) for x in pkg.depends},
+        **{x.config.name: str(x.final_out) for x in pkg.depends},
         "tmp": tmp,
-        "out": str(pkg.out),
+        "out": str(pkg.final_out),
     }
 
     if pkg.src is not None:
-        env["src"] = str(pkg.src)
+        env["src"] = "/tmp/pkgsrc"
 
     with open(pkg.out / "build.log", "w") as buildlog:
         print("Built with https://github.com/equinor/cirrus-deploy", file=buildlog)
@@ -102,7 +106,7 @@ def _build(pkg: Package, tmp: str) -> None:
         print("------ BUILD  LOG ------", file=buildlog)
 
         try:
-            asyncio.run(_async_build(pkg, env, buildlog))
+            asyncio.run(_async_build(oci, pkg, env, buildlog, volumes))
         except BaseException as exc:
             for i in range(1000):
                 fail_path = pkg.storepath / f"fail-{pkg.fullname}-{i}"
@@ -117,7 +121,13 @@ def _build(pkg: Package, tmp: str) -> None:
             )
 
 
-async def _async_build(pkg: Package, env: dict[str, str], buildlog: Any) -> None:
+async def _async_build(
+    oci: Engine,
+    pkg: Package,
+    env: dict[str, str],
+    buildlog: Any,
+    volumes: list[VolumeBind],
+) -> None:
     cwd = pkg.src if pkg.src is not None and pkg.src.is_dir() else Path("/tmp")
 
     builder = NamedTemporaryFile("w", delete=False)
@@ -125,20 +135,21 @@ async def _async_build(pkg: Package, env: dict[str, str], buildlog: Any) -> None
         [
             "#!/usr/bin/env bash\n",
             "set -ex\n",
-            f"echo 'src: {pkg.src}'\n",
-            f"echo 'out: {pkg.out}'\n",
+            "echo 'src: $src'\n",
+            "echo 'out: $out'\n",
             pkg.config.build,
         ]
     )
     builder.close()
     os.chmod(builder.name, 0o700)
 
-    proc = await asyncio.create_subprocess_exec(
+    proc = await oci.exec(
+        pkg.build_image,
+        "/bin/bash",
         builder.name,
-        cwd=cwd,
         env=env,
-        stdout=asyncio.subprocess.PIPE,
-        stderr=asyncio.subprocess.PIPE,
+        cwd=cwd,
+        volumes=volumes,
     )
 
     await asyncio.gather(
@@ -160,6 +171,7 @@ class Build:
         extra_scripts: Path | None = None,
         force: bool = False,
     ) -> None:
+        self.oci_engine: Engine = get_oci_engine()
         self.force: bool = force
         self.config: Config = config
         self.package_list = PackageList(
@@ -180,7 +192,7 @@ class Build:
     def _build_packages(self) -> None:
         for pkg in self.packages.values():
             with TemporaryDirectory() as tmp:
-                _build(pkg, tmp)
+                _build(self.oci_engine, pkg, tmp)
 
     def _build_envs(self) -> None:
         pkg = self.packages[self.config.main_package]

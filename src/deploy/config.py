@@ -1,8 +1,9 @@
 from __future__ import annotations
-from typing import Annotated, Literal
+from typing import Annotated, Any, Literal
 
-from pydantic import BaseModel, ConfigDict, field_validator, Field
+from pydantic import BaseModel, ConfigDict, FilePath, field_validator, Field
 from pathlib import Path
+import pydantic
 import yaml
 
 
@@ -23,6 +24,7 @@ class BuildConfig(BaseModel):
     version: str
     src: GitConfig | FileConfig | None = Field(None, discriminator="type")
     depends: list[str] = Field(default_factory=list)
+    build_image: FilePath | None = None
 
     build: str
 
@@ -37,6 +39,7 @@ class Config(BaseModel):
 
     main_package: str
     entrypoint: Path
+    build_image: FilePath
 
     packages: list[BuildConfig]
     areas: list[AreaConfig] = Field(default_factory=list)
@@ -49,7 +52,15 @@ class Config(BaseModel):
             raise ValueError(f"Entrypoint {value} must be a relative path")
         return value
 
+    @field_validator("build_image", mode="before")
+    @classmethod
+    def _resolve_paths(cls, value: str, info: pydantic.ValidationInfo) -> Path:
+        cwd = (info.context or {}).get("cwd")
+        return cwd / value
+
 
 def load_config(path: Path) -> Config:
     with open(path) as f:
-        return Config.model_validate(yaml.safe_load(f.read()))
+        return Config.model_validate(
+            yaml.safe_load(f.read()), context={"cwd": path.parent}
+        )

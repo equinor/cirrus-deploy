@@ -1,5 +1,6 @@
 main-package: pflotran
 entrypoint: bin/cirrus
+build-image: ./Containerfile
 
 packages:
   - name: petsc
