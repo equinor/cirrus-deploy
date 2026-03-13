@@ -1,4 +1,4 @@
-main_package: pflotran
+main-package: pflotran
 entrypoint: bin/cirrus
 
 packages:
