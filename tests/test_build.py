@@ -208,15 +208,17 @@ def test_not_overwrite_user_set_links_with_default(tmp_path, base_config):
     assert str(latest_link.readlink()) == "1.0.1-1"
 
 
-def test_functional_wrapper_script(tmp_path, base_config):
-    (tmp_path / "test_script.sh").write_text(
-        "echo Hello World", encoding="utf-8", newline="\n"
-    )
+def _build_wrapper(tmp_path, base_config, version="1.0.0", preamble=""):
+    script = "#!/usr/bin/env bash\n"
+    if preamble:
+        script += f"{preamble}\n"
+    script += 'echo "$@"'
+    (tmp_path / "test_script.sh").write_text(script, encoding="utf-8", newline="\n")
 
     base_config["packages"].append(
         {
             "name": "test",
-            "version": "1.0.0",
+            "version": version,
             "src": {"type": "file", "path": str(tmp_path / "test_script.sh")},
             "build": "mkdir -p $out/bin\ncp $src $out/bin/\nchmod +x $out/bin/test_script.sh",
         }
@@ -228,10 +230,94 @@ def test_functional_wrapper_script(tmp_path, base_config):
     builder = Build(tmp_path, config, extra_scripts=tmp_path, prefix=tmp_path)
     builder.build()
 
-    result = subprocess.run([tmp_path / "bin/run"], capture_output=True, text=True)
+    return tmp_path / "bin/run"
 
+
+def test_functional_wrapper_script(tmp_path, base_config):
+    wrapper = _build_wrapper(tmp_path, base_config)
+
+    result = subprocess.run([wrapper], capture_output=True, text=True)
     assert result.returncode == 0
-    assert result.stdout.strip() == "Hello World"
+    assert result.stdout.strip() == ""
+
+    result = subprocess.run([wrapper, "-v", "stable"], capture_output=True, text=True)
+    assert result.returncode == 0
+    assert result.stdout.strip() == ""
+
+    result = subprocess.run(
+        [wrapper, "-arg", "value", "-v", "stable", "pos_arg"],
+        capture_output=True,
+        text=True,
+    )
+    assert result.returncode == 0
+    assert result.stdout.strip() == "-arg value pos_arg"
+
+
+def test_version_selection(tmp_path, base_config):
+    _build_wrapper(tmp_path, base_config, version="1.0.0", preamble='printf "v1 "')
+
+    base_config["packages"] = []
+    wrapper = _build_wrapper(
+        tmp_path, base_config, version="2.0.0", preamble='printf "v2 "'
+    )
+
+    result = subprocess.run([wrapper], capture_output=True, text=True)
+    assert result.returncode == 0
+    assert result.stdout.strip() == "v2"
+
+    result = subprocess.run([wrapper, "-v", "1.0.0"], capture_output=True, text=True)
+    assert result.returncode == 0
+    assert result.stdout.strip() == "v1"
+
+    result = subprocess.run([wrapper, "-v", "2.0.0"], capture_output=True, text=True)
+    assert result.returncode == 0
+    assert result.stdout.strip() == "v2"
+
+    result = subprocess.run(
+        [wrapper, "-v", "1.0.0", "arg1", "arg2"], capture_output=True, text=True
+    )
+    assert result.returncode == 0
+    assert result.stdout.strip() == "v1 arg1 arg2"
+
+    result = subprocess.run(
+        [wrapper, "-v", "2.0.0", "arg1", "arg2"], capture_output=True, text=True
+    )
+    assert result.returncode == 0
+    assert result.stdout.strip() == "v2 arg1 arg2"
+
+
+def test_wrapper_print_versions(tmp_path, base_config):
+    _build_wrapper(tmp_path, base_config, version="1.0.0")
+    base_config["packages"] = [
+        {
+            "name": "test",
+            "version": "2.0.0",
+            "src": {"type": "file", "path": str(tmp_path / "test_script.sh")},
+            "build": "mkdir -p $out/bin\ncp $src $out/bin/\nchmod +x $out/bin/test_script.sh",
+        }
+    ]
+    wrapper = _build_wrapper(tmp_path, base_config, version="2.0.0")
+
+    result = subprocess.run(
+        [wrapper, "--print-versions"], capture_output=True, text=True
+    )
+    assert result.returncode == 0
+
+    lines = result.stdout.strip().splitlines()
+    assert len(lines) >= 4
+
+    aliases = [line for line in lines if " -> " in line]
+    versions = [line for line in lines if " -> " not in line]
+
+    assert any("stable" in a for a in aliases)
+    assert any("latest" in a and "2.0.0-1" in a for a in aliases)
+
+    assert versions[0] == "2.0.0-1"
+    assert versions[1] == "1.0.0-1"
+
+    alias_end = len(aliases)
+    version_start = next(i for i, line in enumerate(lines) if " -> " not in line)
+    assert alias_end == version_start
 
 
 def test_not_overwrite_user_set_version_alias_with_default(tmp_path, base_config):
