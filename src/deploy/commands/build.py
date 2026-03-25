@@ -169,7 +169,10 @@ def _build(pkg: Package, tmp: str) -> None:
 
 
 async def _async_build(pkg: Package, env: dict[str, str], buildlog: Any) -> None:
-    cwd = pkg.src if pkg.src is not None and pkg.src.is_dir() else Path("/tmp")
+
+    cwd = Path("/tmp")
+    if pkg.src is not None:
+        cwd = pkg.src if pkg.src.is_dir() else pkg.src.resolve().parent
 
     builder = NamedTemporaryFile("w", delete=False)
     builder.writelines(
