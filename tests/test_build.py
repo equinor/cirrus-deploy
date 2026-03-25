@@ -1,5 +1,5 @@
 from deploy.commands.build import Build, _checkout
-from deploy.config import Config
+from deploy.config import Config, load_config
 from pathlib import Path
 
 import subprocess
@@ -342,3 +342,22 @@ def test_not_overwrite_user_set_version_alias_with_default(tmp_path, base_config
     assert str((tmp_path / "1.0").readlink()) == "1.0.0"
     assert str((tmp_path / "1.1").readlink()) == "1.0"
     assert str((tmp_path / "1").readlink()) == "1.1"
+
+
+def test_hello_world_example(tmp_path):
+    import shutil
+
+    example_dir = Path(__file__).parent.parent / "examples" / "hello_world"
+    work_dir = tmp_path / "hello_world"
+    shutil.copytree(example_dir, work_dir, ignore=shutil.ignore_patterns("output"))
+
+    prefix = tmp_path / "prefix"
+    config = load_config(work_dir / "config.yaml")
+    builder = Build(work_dir, config, prefix=prefix)
+    builder.build()
+
+    wrapper = prefix / "bin" / "run"
+    assert wrapper.exists()
+    result = subprocess.run([wrapper], capture_output=True, text=True)
+    assert result.returncode == 0
+    assert "running with args:" in result.stdout

@@ -1,0 +1,12 @@
+main-package: hello
+entrypoint: bin/binary.sh
+
+packages:
+  - name: hello
+    version: 1.0.0
+    src:
+      type: file
+      path: binary.sh
+    build: |
+      mkdir -p $out/bin
+      cp $src $out/bin/
