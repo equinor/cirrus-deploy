@@ -16,7 +16,7 @@ ENV VIRTUAL_ENV="/tmp/deploy_env"
 WORKDIR /work
 
 COPY ./src ./src
-COPY ./poetry.lock ./poetry.lock
+COPY ./uv.lock ./uv.lock
 COPY ./pyproject.toml ./pyproject.toml
 COPY ./config.yaml ./config.yaml
 # Poetry requires readme to exist
@@ -27,7 +27,7 @@ RUN ssh-keyscan github.com >> /root/.ssh/known_hosts
 RUN chmod 0700 /root/.ssh
 
 RUN pip install --upgrade pip
-RUN pip install poetry
-RUN poetry install
+RUN pip install uv
+RUN uv sync
 
 ENTRYPOINT ["/bin/bash","-c", "source /tmp/deploy_env/bin/activate; bash"]
