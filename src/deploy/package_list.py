@@ -17,8 +17,8 @@ class PackageList:
         prefix: Path,
         check_existence: bool = True,
     ) -> None:
-        self.prefix: Path = prefix
-        self.storepath: Path = prefix / ".store"
+        self.prefix: Path = prefix.resolve()
+        self.storepath: Path = self.prefix / ".store"
         self.config: Config = config
         buildmap = {x.name: x for x in config.packages}
 

@@ -13,9 +13,8 @@ packages:
       git submodule update --init --recursive
       export BOOST_ROOT="$out"
       mkdir build && cd build
-      cmake .. -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX="$out" -DCMAKE_OSX_SYSROOT="$(xcrun --show-sdk-path)"
+      cmake .. -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX="$out"
       make install
-
 
   - name: phast
     version: 3.8.6
@@ -26,9 +25,11 @@ packages:
       ref: a37cd5f224302fa88a1c903f73d4490b5f4a235c
 
     build: |
-      
+      autoreconf -fi
       ./configure                                  \
-          
+          --with-boost="$boost"                    \
+          CPPFLAGS="-I/usr/include/hdf5/serial"    \
+          LDFLAGS="-L/usr/lib/aarch64-linux-gnu/hdf5/serial"
       make all
       make check
       make install
