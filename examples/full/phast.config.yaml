@@ -1,0 +1,35 @@
+main-package: phast
+entrypoint: bin/phast
+
+packages:
+  - name: boost
+    version: 1.89.0
+    src:
+      type: git
+      url: https://github.com/boostorg/boost.git
+      ref: 1bed2b0712b2119f20d66c5053def9173c8462a5
+
+    build: |
+      git submodule update --init --recursive
+      export BOOST_ROOT="$out"
+      mkdir build && cd build
+      cmake .. -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX="$out"
+      make install
+
+  - name: phast
+    version: 3.8.6
+    depends: [ boost ]
+    src:
+      type: git
+      url: https://github.com/equinor/phast_usgs
+      ref: a37cd5f224302fa88a1c903f73d4490b5f4a235c
+
+    build: |
+      autoreconf -fi
+      ./configure                                  \
+          --with-boost="$boost"                    \
+          CPPFLAGS="-I/usr/include/hdf5/serial"    \
+          LDFLAGS="-L/usr/lib/aarch64-linux-gnu/hdf5/serial"
+      make all
+      make check
+      make install
