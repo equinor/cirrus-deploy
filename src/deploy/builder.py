@@ -123,7 +123,7 @@ async def _async_build(
 
     proc = await ctx.engine(
         pkg.build_image,
-        "/bin/bash",
+        "bash",
         "/dev/stdin",
         env=env,
         cwd=cwd,

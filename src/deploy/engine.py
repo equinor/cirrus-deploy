@@ -4,7 +4,6 @@ from functools import partial
 import hashlib
 import os
 from pathlib import Path
-import sys
 from typing import Literal, Protocol, TypeAlias
 
 
@@ -70,11 +69,6 @@ async def _engine(
 ) -> Process:
     volumes = volumes or []
     image_id = await _engine_ensure_image(which, image)
-
-    for src, _, kind in volumes:
-        if kind == "rw":
-            print("Creating directory", src)
-            Path(src).mkdir(parents=True, exist_ok=True)
 
     stdin = None
     if input is not None:
@@ -156,7 +150,7 @@ async def _native(
 
 def get_engine(preference: EngineName | None = None) -> Engine:
     if preference is None:
-        preference = "docker" if sys.platform == "darwin" else "podman"
+        preference = "podman"
 
     match preference:
         case "podman":
