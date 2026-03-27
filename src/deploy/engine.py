@@ -85,6 +85,7 @@ async def _engine(
     extra_args: list[str] = []
     if which == "podman":
         extra_args.extend(["--security-opt", "label=disable"])
+        extra_args.append(f"--userns=keep-id:uid={os.getuid()},gid={os.getgid()}")
 
     volume_args: list[str] = []
     for src, dst, kind in volumes:
@@ -97,7 +98,6 @@ async def _engine(
         "-i",
         *(f"-e{key}={val}" for key, val in env.items()),
         *volume_args,
-        f"--userns=keep-id:uid={os.getuid()},gid={os.getgid()}",
         f"--workdir={cwd}",
         *extra_args,
         image_id,

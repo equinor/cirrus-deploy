@@ -2,33 +2,36 @@ name: Python application
 
 on:
   push:
-    branches: [ "main" ]
+    branches: ["main"]
   pull_request:
-    branches: [ "main" ]
+    branches: ["main"]
 
 permissions:
   contents: read
 
 jobs:
   build:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest]
 
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os }}
 
     steps:
-    - uses: actions/checkout@v4
-    - name: Set up Python 3.11
-      uses: actions/setup-python@v3
-      with:
-        python-version: "3.11"
-    - name: Install dependencies
-      run: |
-        pip install uv
-        uv sync
-    - name: Lint with ruff
-      run: uv run ruff check
-    - name: Check formatting with ruff
-      run: uv run ruff format --check
-    - name: Typecheck with mypy
-      run: uv run mypy --strict src
-    - name: Test with pytest
-      run: uv run pytest tests
+      - uses: actions/checkout@v4
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v3
+        with:
+          python-version: "3.11"
+      - name: Install dependencies
+        run: |
+          pip install uv
+          uv sync
+      - name: Lint with ruff
+        run: uv run ruff check
+      - name: Check formatting with ruff
+        run: uv run ruff format --check
+      - name: Typecheck with mypy
+        run: uv run mypy --strict src
+      - name: Test with pytest
+        run: uv run pytest tests
