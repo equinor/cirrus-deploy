@@ -2,10 +2,10 @@ from __future__ import annotations
 
 import click
 
-from deploy.commands.build import subcommand_build
-from deploy.commands.schema import subcommand_schema
-from deploy.commands.sync import subcommand_sync
-from deploy.commands.test import subcommand_test
+from karsk.commands.build import subcommand_build
+from karsk.commands.schema import subcommand_schema
+from karsk.commands.sync import subcommand_sync
+from karsk.commands.test import subcommand_test
 
 
 @click.group()

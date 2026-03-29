@@ -5,9 +5,9 @@ from unittest.mock import patch
 
 import pytest
 
-from deploy.builder import build_all
-from deploy.context import Context
-from deploy.fetchers import git_checkout
+from karsk.builder import build_all
+from karsk.context import Context
+from karsk.fetchers import git_checkout
 
 
 @pytest.fixture
@@ -33,7 +33,7 @@ def base_config():
 def test_clean_package_cache_on_rebuild(
     tmp_path, base_config, config_update, script_content
 ):
-    with patch("deploy.fetchers.subprocess") as mocked_subprocess:
+    with patch("karsk.fetchers.subprocess") as mocked_subprocess:
         base_config["packages"].append(
             {
                 "name": "A",

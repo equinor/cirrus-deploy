@@ -1,5 +1,5 @@
 import os
-from deploy.context import Context
+from karsk.context import Context
 import pytest
 
 

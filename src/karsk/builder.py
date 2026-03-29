@@ -11,12 +11,12 @@ import sys
 from tempfile import TemporaryDirectory
 from warnings import warn
 
-from deploy.context import Context
-from deploy.engine import VolumeBind
-from deploy.fetchers import git_checkout
-from deploy.links import make_links
-from deploy.package import Package
-from deploy.utils import redirect_output
+from karsk.context import Context
+from karsk.engine import VolumeBind
+from karsk.fetchers import git_checkout
+from karsk.links import make_links
+from karsk.package import Package
+from karsk.utils import redirect_output
 
 
 SCRIPT_TEMPLATE = """#!/usr/bin/env bash

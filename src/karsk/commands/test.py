@@ -4,7 +4,7 @@ from pathlib import Path
 import sys
 import click
 
-from deploy.context import Context
+from karsk.context import Context
 
 
 @click.command("test", help="Run tests in ./deploy_tests using pytest")

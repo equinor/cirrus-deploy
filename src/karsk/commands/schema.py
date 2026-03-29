@@ -3,7 +3,7 @@ from pathlib import Path
 
 import click
 import json
-from deploy.config import Config
+from karsk.config import Config
 
 
 @click.command("schema", help="Generate JSON Schema")

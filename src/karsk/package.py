@@ -4,7 +4,7 @@ import hashlib
 from functools import cached_property
 from pathlib import Path
 
-from deploy.config import BuildConfig, FileConfig, GitConfig
+from karsk.config import BuildConfig, FileConfig, GitConfig
 
 
 SCRIPTS = Path(__file__).parent / "scripts"

@@ -34,7 +34,7 @@ jobs:
     - name: Build schema
       run: |
         mkdir dist
-        uv run deploy schema -o dist/schema.json
+        uv run karsk schema -o dist/schema.json
 
     - name: Upload static files as artifact
       uses: actions/upload-pages-artifact@v3

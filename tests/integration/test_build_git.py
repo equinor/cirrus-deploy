@@ -1,6 +1,6 @@
 from pathlib import Path
-from deploy.builder import build_all
-from deploy.context import Context
+from karsk.builder import build_all
+from karsk.context import Context
 
 
 def test_context(context: Context) -> None:

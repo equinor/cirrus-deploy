@@ -1,7 +1,7 @@
 [project]
-name = "cirrus-deploy"
-version = "0.2.0"
-description = "Scripts for building and deploying OpenGoSim Cirrus on Equinor premises"
+name = "karsk"
+version = "0.3.0"
+description = "Tool for building and deploying software on HPC clusters"
 readme = "README.md"
 license = "GPL-3.0-or-later"
 authors = [{ name = "Zohar Malamant", email = "ZOM@equinor.com" }]
@@ -27,7 +27,7 @@ dev = [
 ]
 
 [project.scripts]
-deploy = "deploy.cli:cli"
+karsk = "karsk.cli:cli"
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
@@ -37,7 +37,7 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/deploy"]
+packages = ["src/karsk"]
 
 [tool.uv]
 package = true

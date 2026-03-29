@@ -4,10 +4,10 @@ from pathlib import Path
 from typing import Any, Self
 
 from asyncio.subprocess import Process
-from deploy.config import Config, load_config
-from deploy.engine import Engine, EngineName, get_engine
-from deploy.package import Package
-from deploy.package_list import PackageList
+from karsk.config import Config, load_config
+from karsk.engine import Engine, EngineName, get_engine
+from karsk.package import Package
+from karsk.package_list import PackageList
 
 
 class Context:

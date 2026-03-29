@@ -17,6 +17,6 @@ jobs:
     - name: Install dependencies
       run: pip install .
     - name: Build cirrus
-      run: deploy build examples/full/cirrus.config.yaml
+      run: karsk build examples/full/cirrus.config.yaml
     - name: Build runcirrus
-      run: deploy build examples/full/runcirrus.config.yaml
+      run: karsk build examples/full/runcirrus.config.yaml

@@ -4,9 +4,9 @@ import sys
 from pathlib import Path
 import networkx as nx
 
-from deploy.config import Config
-from deploy.engine import VolumeBind
-from deploy.package import Package
+from karsk.config import Config
+from karsk.engine import VolumeBind
+from karsk.package import Package
 
 
 class PackageList:

@@ -1,12 +1,12 @@
 from __future__ import annotations
 import os
 from pathlib import Path
-from deploy.config import Config
+from karsk.config import Config
 import pytest
 import subprocess
 import shutil
 
-from deploy.context import Context
+from karsk.context import Context
 
 
 DIR = Path(os.path.dirname(__file__))

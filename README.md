@@ -1,52 +1,47 @@
-Cirrus deployment scripts
-=========================
+Karsk
+=====
 
-These are the scripts for deploying OpenGoSim's Cirrus on-prem in Equinor.
+Karsk (pronounced _kask_) is a Norwegian cocktail from Trøndelag county mixing
+coffee with moonshine. It is also a tool for deploying software on our
+NFS-backed Linux cluster.
 
-## Deploying
+Karsk solves the following problems for us:
+1.  **Continuous  upgrades**:  Users  reliably access  the  latest  versions  of
+   software without needing to update anything themselves.
+2. **User-controlled versioning**: Each deploy persists on disk. Users can select
+   any existing version anytime.
+3. **Simple rollbacks**: Because releases are symbolic links, rollbacks are
+   quick and painless.
 
-Cirrus depends on [PETSC](https://github.com/petsc/petsc) as well as other
-packages that PETSC provides.
+# Installing
 
-The `config` file is a file that is sourced in other bash scripts, and so must
-follow bash syntax. It describes which sources to install where.
+Karsk is written in Python and requires
+[uv](https://docs.astral.sh/uv/getting-started/installation/) and some container
+engine. Currently, only [Podman](https://podman.io/) is supported, but
+[Docker](https://www.docker.com/) may work as well.
 
-The install procedure is done through the following commands:
-1. Install [uv](https://docs.astral.sh/uv/getting-started/installation/): the package manager that we use
-2. Run `uv sync` in root folder. The cli tool `deploy` has been installed (`deploy --help` for information)
-3. Run `deploy build` in order to start the build process.
+To get started, clone this repository and run `uv sync` to get the `karsk`
+executable.
 
-# Development Using Docker
+# Using 
 
-```bash
-git clone git@github.com:equinor/cirrus-deploy.git
-cd cirrus-deploy
+See [examples](./examples) directory for examples. Use `karsk --help` to view
+documentation.
+
+# Testing
+
+This project uses [pytest](https://pytest.org) for tests,
+[mypy](https://www.mypy-lang.org/) for type-checking and
+[ruff](https://docs.astral.sh/ruff/) for linting and formatting.
+
+```sh
+# Run tests
+uv run pytest tests
+
+# Typecheck (note: we don't typecheck test code)
+uv run mypy --strict src
+
+# Lint and format
+uv run ruff format
+uv run ruff check --fix
 ```
-
-The Dockerfile contains the required build tools in order to compile and run cirrus/pflotran.
-
-```bash
-docker build . -t cirrus
-```
-
-Run the docker image interactively. Consider including volume mounts to get test_data etc, and work on the files
-
-```bash
-docker run --rm -v $PWD:/work -v $PWD/_output:/root/cirrus -it cirrus
-```
-
-Now inside the docker image run the commands to build and install
-
-```bash
-deploy build
-deploy test
-deploy links
-```
-
-Set the path variable to the system path:
-
-```bash
-export CIRRUS_VERSIONS_PATH=/root/cirrus/versions
-```
-
-You should now have `runcirrus` in your path inside the docker container

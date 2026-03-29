@@ -4,9 +4,9 @@ from pathlib import Path
 
 import click
 
-from deploy.builder import build_all
-from deploy.commands._common import argument_config_file, option_output, option_prefix
-from deploy.context import Context
+from karsk.builder import build_all
+from karsk.commands._common import argument_config_file, option_output, option_prefix
+from karsk.context import Context
 
 
 @click.command("build", help="Build Cirrus and dependencies")
