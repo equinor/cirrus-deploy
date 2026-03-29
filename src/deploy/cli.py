@@ -3,6 +3,7 @@ from __future__ import annotations
 import click
 
 from deploy.commands.build import subcommand_build
+from deploy.commands.schema import subcommand_schema
 from deploy.commands.sync import subcommand_sync
 from deploy.commands.test import subcommand_test
 
@@ -13,6 +14,7 @@ def cli() -> None:
 
 
 cli.add_command(subcommand_build)
+cli.add_command(subcommand_schema)
 cli.add_command(subcommand_sync)
 cli.add_command(subcommand_test)
 
