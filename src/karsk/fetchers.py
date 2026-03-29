@@ -3,8 +3,8 @@ import os
 from pathlib import Path
 import subprocess
 
-from deploy.config import GitConfig
-from deploy.package import Package
+from karsk.config import GitConfig
+from karsk.package import Package
 
 
 def git_checkout(pkg: Package) -> None:

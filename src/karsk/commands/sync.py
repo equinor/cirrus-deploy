@@ -10,10 +10,10 @@ from pathlib import Path
 
 import click
 
-from deploy.commands._common import argument_config_file, option_output, option_prefix
-from deploy.config import Config, AreaConfig, load_config
-from deploy.package_list import PackageList
-from deploy.utils import redirect_output
+from karsk.commands._common import argument_config_file, option_output, option_prefix
+from karsk.config import Config, AreaConfig, load_config
+from karsk.package_list import PackageList
+from karsk.utils import redirect_output
 
 
 def change_prefix(path: Path, old_prefix: Path, new_prefix: Path) -> Path:

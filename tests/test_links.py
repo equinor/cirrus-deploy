@@ -2,7 +2,7 @@ import os
 import pytest
 from pathlib import Path
 
-from deploy.links import make_links
+from karsk.links import make_links
 
 
 @pytest.fixture

@@ -1,5 +1,5 @@
 from typing import AsyncIterator
-from deploy import utils
+from karsk import utils
 
 import sys
 import asyncio

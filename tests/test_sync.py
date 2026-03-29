@@ -2,12 +2,12 @@ import filecmp
 import os
 from subprocess import CalledProcessError
 from pathlib import Path
-from deploy.builder import build_all
+from karsk.builder import build_all
 import pytest
 
-from deploy.config import Config
-from deploy.commands.sync import Sync, do_sync, change_prefix
-from deploy.context import Context
+from karsk.config import Config
+from karsk.commands.sync import Sync, do_sync, change_prefix
+from karsk.context import Context
 
 BUILD_SCRIPT = """\
 mkdir $out/bin
