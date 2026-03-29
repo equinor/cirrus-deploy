@@ -1,3 +1,5 @@
+# yaml-language-server: $schema=https://equinor.github.io/karsk/schema.json
+
 main-package: pflotran
 entrypoint: bin/cirrus
 build-image: ./Containerfile
