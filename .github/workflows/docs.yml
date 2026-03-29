@@ -47,7 +47,7 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
     runs-on: ubuntu-latest
     needs: build
-    if: success() && github.ref == 'refs/head/master'
+    if: success() && github.ref == 'refs/head/main'
     steps:
       - name: Deploy to GitHub Pages
         uses: actions/deploy-pages@v5
