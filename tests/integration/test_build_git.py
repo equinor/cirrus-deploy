@@ -1,3 +1,4 @@
+from asyncio.subprocess import PIPE
 from pathlib import Path
 from karsk.builder import build_all
 from karsk.context import Context
@@ -7,8 +8,8 @@ def test_context(context: Context) -> None:
     assert set(context.packages) == {"foo", "bar"}
 
 
-def test_checkout(context: Context, tmp_path: Path) -> None:
-    build_all(context)
+async def test_checkout(context: Context, tmp_path: Path) -> None:
+    await build_all(context)
 
     out = context.packages["foo"].out
     assert (out / "lib/libfoo.so").is_file()
@@ -16,9 +17,8 @@ def test_checkout(context: Context, tmp_path: Path) -> None:
     out = context.packages["bar"].out
     assert (out / "bin/bar").is_file()
 
-    assert (
-        context.run_sync(
-            str(context["bar"].final_out / "bin/bar"),
-        )
-        == "I am a test\n"
-    )
+    proc = await context.run(str(context["bar"].final_out / "bin/bar"), stdout=PIPE)
+    await proc.wait()
+
+    stdout = await proc.stdout.read()
+    assert stdout == b"I am a test\n"

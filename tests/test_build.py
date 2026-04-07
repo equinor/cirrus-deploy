@@ -67,7 +67,7 @@ def test_clean_package_cache_on_rebuild(
         assert "clean" in git_commands
 
 
-def test_not_overwrite_user_set_links_with_default(tmp_path, base_config):
+async def test_not_overwrite_user_set_links_with_default(tmp_path, base_config):
     base_config["packages"].append(
         {"name": "test", "version": "1.0.0", "build": "mkdir -p $out/bin\n"}
     )
@@ -76,7 +76,7 @@ def test_not_overwrite_user_set_links_with_default(tmp_path, base_config):
     ctx = Context.from_config(
         base_config, cwd=tmp_path, prefix=tmp_path, output=tmp_path, engine="native"
     )
-    build_all(ctx)
+    await build_all(ctx)
 
     stable_link = tmp_path / "stable"
     latest_link = tmp_path / "latest"
@@ -94,7 +94,7 @@ def test_not_overwrite_user_set_links_with_default(tmp_path, base_config):
     ctx = Context.from_config(
         base_config, cwd=tmp_path, prefix=tmp_path, output=tmp_path, engine="native"
     )
-    build_all(ctx)
+    await build_all(ctx)
 
     assert stable_link.is_symlink()
     assert latest_link.is_symlink()
@@ -102,7 +102,7 @@ def test_not_overwrite_user_set_links_with_default(tmp_path, base_config):
     assert str(latest_link.readlink()) == "1.0.1-1"
 
 
-def _build_wrapper(tmp_path, base_config, version="1.0.0", preamble=""):
+async def _build_wrapper(tmp_path, base_config, version="1.0.0", preamble=""):
     script = "#!/usr/bin/env bash\n"
     if preamble:
         script += f"{preamble}\n"
@@ -126,13 +126,13 @@ def _build_wrapper(tmp_path, base_config, version="1.0.0", preamble=""):
     ctx = Context.from_config(
         base_config, cwd=tmp_path, prefix=tmp_path, output=tmp_path, engine="native"
     )
-    build_all(ctx)
+    await build_all(ctx)
 
     return tmp_path / "bin/run"
 
 
-def test_functional_wrapper_script(tmp_path, base_config):
-    wrapper = _build_wrapper(tmp_path, base_config)
+async def test_functional_wrapper_script(tmp_path, base_config):
+    wrapper = await _build_wrapper(tmp_path, base_config)
 
     result = subprocess.run([wrapper], capture_output=True, text=True)
     assert result.returncode == 0
@@ -151,11 +151,13 @@ def test_functional_wrapper_script(tmp_path, base_config):
     assert result.stdout.strip() == "-arg value pos_arg"
 
 
-def test_version_selection(tmp_path, base_config):
-    _build_wrapper(tmp_path, base_config, version="1.0.0", preamble='printf "v1 "')
+async def test_version_selection(tmp_path, base_config):
+    await _build_wrapper(
+        tmp_path, base_config, version="1.0.0", preamble='printf "v1 "'
+    )
 
     base_config["packages"] = []
-    wrapper = _build_wrapper(
+    wrapper = await _build_wrapper(
         tmp_path, base_config, version="2.0.0", preamble='printf "v2 "'
     )
 
@@ -184,13 +186,13 @@ def test_version_selection(tmp_path, base_config):
     assert result.stdout.strip() == "v2 arg1 arg2"
 
 
-def test_wrapper_print_versions(tmp_path, base_config):
-    _build_wrapper(tmp_path, base_config, version="1.0.0")
-    _build_wrapper(tmp_path, base_config, version="1.1.0")
-    _build_wrapper(tmp_path, base_config, version="1.1.1")
+async def test_wrapper_print_versions(tmp_path, base_config):
+    await _build_wrapper(tmp_path, base_config, version="1.0.0")
+    await _build_wrapper(tmp_path, base_config, version="1.1.0")
+    await _build_wrapper(tmp_path, base_config, version="1.1.1")
 
     base_config["links"] = {"something": "1.0"}
-    wrapper = _build_wrapper(tmp_path, base_config, version="2.0.0")
+    wrapper = await _build_wrapper(tmp_path, base_config, version="2.0.0")
 
     result = subprocess.run(
         [wrapper, "--print-versions"], capture_output=True, text=True
@@ -210,7 +212,7 @@ latest -> 2.0.0-1
     assert "\n".join(lines) == expected, f"Unexpected output:\n{result.stdout}"
 
 
-def test_not_overwrite_user_set_version_alias_with_default(tmp_path, base_config):
+async def test_not_overwrite_user_set_version_alias_with_default(tmp_path, base_config):
     base_config["packages"].append(
         {"name": "test", "version": "1.0.0", "build": "mkdir -p $out/bin\n"}
     )
@@ -219,7 +221,7 @@ def test_not_overwrite_user_set_version_alias_with_default(tmp_path, base_config
     ctx = Context.from_config(
         base_config, cwd=tmp_path, prefix=tmp_path, output=tmp_path, engine="native"
     )
-    build_all(ctx)
+    await build_all(ctx)
 
     assert str((tmp_path / "1.0.0").readlink()) == "1.0.0-1"
     assert str((tmp_path / "1.0").readlink()) == "1.0.0"
@@ -233,7 +235,7 @@ def test_not_overwrite_user_set_version_alias_with_default(tmp_path, base_config
     ctx = Context.from_config(
         base_config, cwd=tmp_path, prefix=tmp_path, output=tmp_path, engine="native"
     )
-    build_all(ctx)
+    await build_all(ctx)
 
     assert str((tmp_path / "1.0.0").readlink()) == "1.0.0-1"
     assert str((tmp_path / "1.0").readlink()) == "1.0.0"
@@ -241,7 +243,7 @@ def test_not_overwrite_user_set_version_alias_with_default(tmp_path, base_config
     assert str((tmp_path / "1").readlink()) == "1.1"
 
 
-def test_hello_world_example(tmp_path, monkeypatch):
+async def test_hello_world_example(tmp_path, monkeypatch):
     import shutil
 
     example_dir = Path(__file__).parent.parent / "examples" / "hello_world"
@@ -253,7 +255,7 @@ def test_hello_world_example(tmp_path, monkeypatch):
     ctx = Context.from_config_file(
         Path("config.yaml"), prefix=tmp_path, output=tmp_path, engine="native"
     )
-    build_all(ctx)
+    await build_all(ctx)
 
     wrapper = tmp_path / "bin" / "run"
     assert wrapper.exists()

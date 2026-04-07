@@ -3,6 +3,7 @@ from __future__ import annotations
 import click
 
 from karsk.commands.build import subcommand_build
+from karsk.commands.enter import subcommand_enter
 from karsk.commands.schema import subcommand_schema
 from karsk.commands.sync import subcommand_sync
 from karsk.commands.test import subcommand_test
@@ -14,6 +15,7 @@ def cli() -> None:
 
 
 cli.add_command(subcommand_build)
+cli.add_command(subcommand_enter)
 cli.add_command(subcommand_schema)
 cli.add_command(subcommand_sync)
 cli.add_command(subcommand_test)

@@ -6,7 +6,7 @@ from karsk.builder import build_all
 import pytest
 
 from karsk.config import Config
-from karsk.commands.sync import Sync, do_sync, change_prefix
+from karsk.commands.sync import Sync, sync_all, change_prefix
 from karsk.context import Context
 
 BUILD_SCRIPT = """\
@@ -51,9 +51,9 @@ def base_config():
     return config
 
 
-def _deploy_config(config, prefix=None):
+async def _deploy_config(config, prefix=None):
     context = Context(config, prefix=prefix, output=prefix, engine="native")
-    build_all(context)
+    await build_all(context)
     return context
 
 
@@ -89,20 +89,22 @@ def test_change_prefix(old_prefix, new_prefix, path, expectation):
         assert change_prefix(path, old_prefix, new_prefix) == Path(expectation)
 
 
-def test_successful_sync(tmp_path, base_config):
+async def test_successful_sync(tmp_path, base_config):
     destination = tmp_path / "destination"
 
-    builder = _deploy_config(base_config, tmp_path)
+    builder = await _deploy_config(base_config, tmp_path)
 
     pkg = builder.packages["A"]
     installed_file_path = pkg.out / "bin/a_file"
     assert installed_file_path.exists()
 
-    do_sync(
+    await sync_all(
         config=base_config,
         prefix=tmp_path,
         output=tmp_path,
         dest_prefix=destination,
+        no_async=False,
+        dry_run=False,
     )
 
     synced_file_path = destination / ".store" / pkg.out.name / "bin/a_file"
@@ -111,13 +113,15 @@ def test_successful_sync(tmp_path, base_config):
     assert os.path.islink(destination / "latest")
 
 
-def test_failing_sync(tmp_path, base_config):
+async def test_failing_sync(tmp_path, base_config):
     """Try to sync to non existent area"""
-    _deploy_config(base_config, tmp_path)
+    await _deploy_config(base_config, tmp_path)
     with pytest.raises(CalledProcessError):
-        do_sync(
+        await sync_all(
             config=base_config,
             prefix=tmp_path,
             output=tmp_path,
             dest_prefix=Path("/non-existent/destination"),
+            no_async=False,
+            dry_run=False,
         )

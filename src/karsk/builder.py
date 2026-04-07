@@ -140,7 +140,7 @@ async def _async_build(
     assert proc.returncode == 0
 
 
-def _build(ctx: Context, pkg: Package, tmp: str) -> None:
+async def _build(ctx: Context, pkg: Package, tmp: str) -> None:
     try:
         pkg.out.mkdir()
     except FileExistsError:
@@ -182,7 +182,7 @@ def _build(ctx: Context, pkg: Package, tmp: str) -> None:
         print("------ BUILD  LOG ------", file=buildlog)
 
         try:
-            asyncio.run(_async_build(ctx, pkg, env, buildlog, volumes))
+            await _async_build(ctx, pkg, env, buildlog, volumes)
         except BaseException as exc:
             for i in range(1000):
                 fail_path = pkg.storepath / f"fail-{pkg.fullname}-{i}"
@@ -197,10 +197,10 @@ def _build(ctx: Context, pkg: Package, tmp: str) -> None:
             )
 
 
-def _build_packages(ctx: Context) -> None:
+async def _build_packages(ctx: Context) -> None:
     for pkg in ctx.plist.packages.values():
         with TemporaryDirectory() as tmp:
-            _build(ctx, pkg, tmp)
+            await _build(ctx, pkg, tmp)
 
 
 def _build_envs(ctx: Context) -> None:
@@ -252,8 +252,8 @@ def _get_build_path(base: Path, finalpkg: Package) -> Path | None:
     )
 
 
-def build_all(ctx: Context) -> None:
-    _build_packages(ctx)
+async def build_all(ctx: Context) -> None:
+    await _build_packages(ctx)
 
     if ctx.engine_name == "native":
         _build_envs(ctx)

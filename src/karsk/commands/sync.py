@@ -159,7 +159,7 @@ class Sync:
             )
 
 
-async def _sync(
+async def sync_all(
     config: Config,
     prefix: Path,
     output: Path,
@@ -185,18 +185,6 @@ async def _sync(
         raise result
 
 
-def do_sync(
-    config: Config,
-    *,
-    prefix: Path,
-    output: Path,
-    dest_prefix: Path | None = None,
-    no_async: bool = False,
-    dry_run: bool = False,
-) -> None:
-    asyncio.run(_sync(config, prefix, output, dest_prefix, no_async, dry_run))
-
-
 @click.command("sync", help="Synchronise all locations")
 @argument_config_file
 @option_prefix
@@ -216,10 +204,13 @@ def subcommand_sync(
     config_file: Path, prefix: Path, output: Path, no_async: bool, dry_run: bool
 ) -> None:
     config = load_config(config_file)
-    do_sync(
-        config,
-        prefix=prefix,
-        output=output,
-        no_async=no_async,
-        dry_run=dry_run,
+    asyncio.run(
+        sync_all(
+            config,
+            prefix=prefix,
+            output=output,
+            no_async=no_async,
+            dry_run=dry_run,
+            dest_prefix=None,
+        )
     )
