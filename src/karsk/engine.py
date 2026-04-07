@@ -7,6 +7,7 @@ from pathlib import Path
 import shutil
 import subprocess
 from typing import Literal, Protocol, TypeAlias
+from typing import IO, Any
 
 
 VolumeBind: TypeAlias = tuple[str | Path, str | Path, Literal["ro", "rw"]]
@@ -23,6 +24,10 @@ class Engine(Protocol):
         env: dict[str, str],
         cwd: str | Path,
         input: str | bytes | None = None,
+        stdin: int | IO[Any] | None = None,
+        stdout: int | IO[Any] | None = None,
+        stderr: int | IO[Any] | None = None,
+        terminal: bool = False,
     ) -> Process: ...
 
 
@@ -68,11 +73,16 @@ async def _engine(
     env: dict[str, str],
     cwd: str | Path,
     input: str | bytes | None = None,
+    stdin: int | IO[Any] | None = None,
+    stdout: int | IO[Any] | None = None,
+    stderr: int | IO[Any] | None = None,
+    terminal: bool = False,
 ) -> Process:
+    assert not (stdin and input), "Arguments 'stdin' and 'input' are mutually exclusive"
+
     volumes = volumes or []
     image_id = await _engine_ensure_image(which, image)
 
-    stdin = None
     if input is not None:
         stdin = PIPE
         if isinstance(input, str):
@@ -81,7 +91,13 @@ async def _engine(
     extra_args: list[str] = []
     if which == "podman":
         extra_args.extend(["--security-opt", "label=disable"])
-        extra_args.append(f"--userns=keep-id:uid={os.getuid()},gid={os.getgid()}")
+
+        # Ensure that whatever the host user's IDs are, the container user is
+        # 1000:1000 (ie. the first regular user account)
+        extra_args.append("--userns=keep-id:uid=1000,gid=1000")
+
+    if terminal:
+        extra_args.append("-t")
 
     volume_args: list[str] = []
     for src, dst, kind in volumes:
@@ -100,8 +116,9 @@ async def _engine(
         program,
         *args,
         stdin=stdin,
-        stdout=PIPE,
-        stderr=PIPE,
+        stdout=stdout,
+        stderr=stderr,
+        start_new_session=True,
     )
 
     if input is not None:
@@ -120,8 +137,12 @@ async def _native(
     env: dict[str, str],
     cwd: str | Path,
     input: str | bytes | None = None,
+    stdin: int | IO[Any] | None = None,
+    stdout: int | IO[Any] | None = None,
+    stderr: int | IO[Any] | None = None,
+    terminal: bool = False,
 ) -> Process:
-    _ = image
+    _ = image, terminal
 
     for src, dst, _ in volumes or []:
         if src == dst:
@@ -130,14 +151,17 @@ async def _native(
             f"When using Native engine, volume src and dst must be the same. {src=} {dst=}"
         )
 
+    if input is not None:
+        stdin = PIPE
+
     proc = await asyncio.create_subprocess_exec(
         program,
         *args,
         env={**os.environ, **env},
         cwd=cwd,
-        stdin=PIPE if input is not None else None,
-        stdout=PIPE,
-        stderr=PIPE,
+        stdin=stdin,
+        stdout=stdout,
+        stderr=stderr,
     )
 
     if isinstance(input, str):

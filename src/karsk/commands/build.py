@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 from pathlib import Path
 
 import click
@@ -26,4 +27,4 @@ def subcommand_build(
     context = Context.from_config_file(
         config_file, prefix=prefix, output=output, engine=engine
     )
-    build_all(context)
+    asyncio.run(build_all(context))
