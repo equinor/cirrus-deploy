@@ -5,7 +5,7 @@ from typing import Any, Self
 
 from asyncio.subprocess import Process
 from karsk.config import Config, load_config
-from karsk.engine import Engine, EngineName, get_engine
+from karsk.engine import Engine, EngineName, VolumeBind, get_engine
 from karsk.package import Package
 from karsk.package_list import PackageList
 
@@ -62,9 +62,9 @@ class Context:
         config_ = Config.model_validate(data, context={"cwd": cwd})
         return cls(config_, prefix=prefix, output=output, engine=engine)
 
-    def run_sync(self, program: str, *args: str) -> str:
-        async def inner(program: str, *args: str) -> str:
-            proc = await self.run(program, *args)
+    def run_sync(self, program: str, *args: str, env: dict[str, str]) -> str:
+        async def inner(program: str, *args: str, env: dict[str, str]) -> str:
+            proc = await self.run(program, *args, env=env)
             _ = await proc.wait()
 
             assert proc.stdout is not None
@@ -72,20 +72,27 @@ class Context:
 
             return output.decode("utf-8")
 
-        return asyncio.run(inner(program, *args))
+        return asyncio.run(inner(program, *args, env=env))
 
     async def run(
         self,
         program: str,
         *args: str,
         package: str | list[str] | None = None,
+        volumes: list[VolumeBind] | None = None,
         build: bool = False,
         cwd: str | None = None,
+        env: dict[str, str] | None = None,
+        terminal: bool = False,
     ) -> Process:
         image: Path
 
         if cwd is None:
             cwd = "/"
+        if env is None:
+            env = {}
+        if volumes is None:
+            volumes = []
 
         if build:
             assert isinstance(package, str), (
@@ -111,7 +118,8 @@ class Context:
             image,
             program,
             *args,
-            volumes=self.plist.volumes(package),
+            volumes=volumes + self.plist.volumes(package),
             cwd=cwd,
-            env={},
+            env=env,
+            terminal=terminal,
         )
