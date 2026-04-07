@@ -1,17 +1,22 @@
 Karsk
 =====
 
+<!-- --8<-- [start:intro] -->
 Karsk (pronounced _kask_) is a Norwegian cocktail from Trøndelag county mixing
 coffee with moonshine. It is also a tool for deploying software on our
 NFS-backed Linux cluster.
 
 Karsk solves the following problems for us:
+
 1.  **Continuous  upgrades**:  Users  reliably access  the  latest  versions  of
    software without needing to update anything themselves.
+
 2. **User-controlled versioning**: Each deploy persists on disk. Users can select
    any existing version anytime.
+
 3. **Simple rollbacks**: Because releases are symbolic links, rollbacks are
    quick and painless.
+<!-- --8<-- [end:intro] -->         
 
 # Installing
 

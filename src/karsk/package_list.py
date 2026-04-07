@@ -40,7 +40,7 @@ class PackageList:
                 self.final_storepath,
                 build,
                 [self.packages[x] for x in build.depends],
-                build.build_image or config.build_image,
+                config.build_image,
                 output / "cache",
             )
 

@@ -4,7 +4,7 @@ import hashlib
 from functools import cached_property
 from pathlib import Path
 
-from karsk.config import BuildConfig, FileConfig, GitConfig
+from karsk.config import PackageConfig, FileConfig, GitConfig
 
 
 SCRIPTS = Path(__file__).parent / "scripts"
@@ -15,7 +15,7 @@ class Package:
         self,
         storepath: Path,
         final_storepath: Path,
-        config: BuildConfig,
+        config: PackageConfig,
         depends: list[Package],
         build_image: Path,
         cache: Path,

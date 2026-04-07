@@ -29,17 +29,18 @@ jobs:
     - name: Install dependencies
       run: |
         pip install uv
-        uv sync
+        uv sync --group docs
+
+    - name: Build docs
+      run: uv run mkdocs build
 
     - name: Build schema
-      run: |
-        mkdir dist
-        uv run karsk schema -o dist/schema.json
+      run: uv run karsk schema -o site/schema.json
 
     - name: Upload static files as artifact
       uses: actions/upload-pages-artifact@v3
       with:
-        path: dist/
+        path: site/
 
   deploy:
     environment:
