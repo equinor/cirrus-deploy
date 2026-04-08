@@ -2,7 +2,7 @@ Karsk
 =====
 
 <!-- --8<-- [start:intro] -->
-Karsk (pronounced _kask_) is a Norwegian cocktail from Trøndelag county mixing
+Karsk (pronounced _kashk_) is a Norwegian cocktail from Trøndelag county mixing
 coffee with moonshine. It is also a tool for deploying software on our
 NFS-backed Linux cluster.
 
