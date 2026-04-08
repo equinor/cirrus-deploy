@@ -51,7 +51,7 @@ async def _engine_ensure_image(which: Literal["docker", "podman"], image: Path) 
         image_name,
         "--label",
         "karsk",
-        "/",
+        image.parent,
     )
     assert await proc.wait() == os.EX_OK
     return image_name
