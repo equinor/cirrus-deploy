@@ -4,6 +4,8 @@ from functools import partial
 import hashlib
 import os
 from pathlib import Path
+import shutil
+import subprocess
 from typing import Literal, Protocol, TypeAlias
 
 
@@ -148,14 +150,34 @@ async def _native(
     return proc
 
 
+def _validate_engine(which: Literal["docker", "podman"]) -> None:
+    if shutil.which(which) is None:
+        raise RuntimeError(
+            f"'{which}' was not found in $PATH. "
+            f"Please install {which} or select a different engine with --engine."
+        )
+
+    result = subprocess.run(
+        [which, "version"],
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.PIPE,
+    )
+    if result.returncode != 0:
+        raise RuntimeError(
+            f"'{which}' is installed but not functional:\n{result.stderr.decode().strip()}"
+        )
+
+
 def get_engine(preference: EngineName | None = None) -> Engine:
     if preference is None:
         preference = "podman"
 
     match preference:
         case "podman":
+            _validate_engine("podman")
             return partial(_engine, "podman")
         case "docker":
+            _validate_engine("docker")
             return partial(_engine, "docker")
         case "native":
             return _native
