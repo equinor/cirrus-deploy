@@ -10,7 +10,6 @@ from pathlib import Path
 import shutil
 import sys
 from tempfile import NamedTemporaryFile, TemporaryDirectory
-from warnings import warn
 
 from karsk.console import console
 from karsk.context import Context
@@ -89,8 +88,8 @@ exec "$ENTRY_POINT" "${{FORWARD_ARGS[@]}}"
 """
 
 
-def _create_wrapper_script(ctx: Context) -> None:
-    bin_dir = ctx.destination / "bin"
+def _create_wrapper_script(ctx: Context, base: Path) -> None:
+    bin_dir = base / "bin"
     bin_dir.mkdir(parents=True, exist_ok=True)
 
     wrapper_script = bin_dir / "run"
@@ -225,18 +224,30 @@ async def _build_packages(ctx: Context, stop_after: Package | None = None) -> No
             break
 
 
-def _build_envs(ctx: Context) -> None:
+def _build_envs(
+    ctx: Context,
+    *,
+    base: Path | None = None,
+    use_final_out: bool = False,
+    allow_existing: bool = False,
+) -> None:
+    if base is None:
+        base = ctx.staging
+
     pkg = ctx.plist.packages[ctx.config.main_package]
-    path = _get_build_path(ctx.destination, pkg)
-    assert path is not None
-    _build_env_for_package(path, pkg)
+    path = _get_build_path(base, pkg)
+    if path is None:
+        if allow_existing:
+            return
+        assert False, f"Environment already exists in {base}"
+    _build_env_for_package(path, pkg, use_final_out=use_final_out)
 
     default_links: dict[str, str] = {"latest": "^", "stable": "latest"}
     make_links(
         links={**default_links, **ctx.config.links},
-        destination=ctx.destination,
+        destination=base,
     )
-    _create_wrapper_script(ctx)
+    _create_wrapper_script(ctx, base)
 
 
 def _build_env_for_package(
@@ -281,10 +292,7 @@ async def build_all(ctx: Context, stop_after: Package | None = None) -> None:
     if stop_after is not None:
         return
 
-    if ctx.engine_name == "native":
-        _build_envs(ctx)
-    else:
-        warn("FIXME: Make _build_envs work within containers")
+    _build_envs(ctx)
 
 
 def install_all(ctx: Context) -> None:
@@ -303,15 +311,4 @@ def install_all(ctx: Context) -> None:
         shutil.copytree(pkg.out, pkg.final_out)
         print(f"Installed {pkg.fullname} to {pkg.final_out}")
 
-    main_pkg = ctx.plist.packages[ctx.config.main_package]
-    path = _get_build_path(destination, main_pkg)
-    if path is None:
-        return
-    _build_env_for_package(path, main_pkg, use_final_out=True)
-
-    default_links: dict[str, str] = {"latest": "^", "stable": "latest"}
-    make_links(
-        links={**default_links, **ctx.config.links},
-        destination=destination,
-    )
-    _create_wrapper_script(ctx)
+    _build_envs(ctx, base=destination, use_final_out=True, allow_existing=True)

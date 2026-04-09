@@ -18,6 +18,7 @@ class PackageList:
         staging: Path,
         check_existence: bool = True,
     ) -> None:
+        self.staging: Path = staging
         self.staging_storepath: Path = staging / Path(".store")
         self.storepath: Path = config.destination / ".store"
         self.config: Config = config

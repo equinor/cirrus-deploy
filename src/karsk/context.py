@@ -32,6 +32,10 @@ class Context:
         return self.config.destination
 
     @property
+    def staging(self) -> Path:
+        return self.plist.staging
+
+    @property
     def packages(self) -> dict[str, Package]:
         return self.plist.packages
 
