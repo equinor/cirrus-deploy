@@ -85,3 +85,29 @@ async def test_failing_sync(tmp_path, base_config, monkeypatch):
             no_async=False,
             dry_run=False,
         )
+
+
+async def test_sync_with_non_local_prefix(tmp_path, base_config):
+    from karsk.builder import _build_envs
+
+    base_config.destination = tmp_path
+
+    ctx = Context(base_config, staging=tmp_path, engine="native")
+
+    pkg = ctx.packages["A"]
+    installed_file_path = pkg.out / "bin/a_file"
+    installed_file_path.parent.mkdir(parents=True)
+
+    installed_file_path.write_text("test")
+
+    _build_envs(ctx)
+
+    await sync_all(
+        config=base_config,
+        staging=tmp_path,
+        no_async=False,
+        dry_run=False,
+    )
+
+    assert installed_file_path.exists()
+    assert os.path.islink(tmp_path / "latest")

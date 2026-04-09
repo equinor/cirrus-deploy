@@ -1,11 +1,11 @@
 import os
 import subprocess
 from pathlib import Path
-
-from karsk.config import GitConfig
+import shutil
 import pytest
 
-from karsk.builder import build_all
+from karsk.config import GitConfig
+from karsk.builder import build_all, _build_envs, install_all
 from karsk.context import Context
 from karsk.fetchers import fetch_git
 
@@ -281,3 +281,95 @@ async def test_hello_world_example(tmp_path, monkeypatch):
     result = subprocess.run([str(wrapper)], capture_output=True, text=True)
     assert result.returncode == 0
     assert "running with args:" in result.stdout
+
+
+def test_build_with_non_local_prefix(tmp_path, base_config):
+    from karsk.builder import _build_envs
+
+    staging = tmp_path / "output"
+
+    base_config["packages"].append(
+        {"name": "test", "version": "1.0.0", "build": "mkdir -p $out/bin\n"}
+    )
+    base_config["main-package"] = "test"
+
+    ctx = Context.from_config(
+        base_config, cwd=tmp_path, staging=staging, engine="native"
+    )
+
+    pkg = ctx.plist.packages["test"]
+    pkg.out.mkdir(parents=True)
+    (pkg.out / "bin").mkdir()
+    (pkg.out / "bin" / "hello").write_text("#!/bin/bash\necho hello\n")
+
+    _build_envs(ctx)
+
+    assert (staging / "bin" / "run").exists()
+    assert (staging / "stable").is_symlink()
+    assert (staging / "latest").is_symlink()
+
+
+def test_install_appends_build_id_when_manifest_differs(tmp_path, base_config):
+    """Destination is append-only: build IDs may differ from staging.
+
+    Scenario:
+      1. Build v1.0.0 and install → both staging and destination get 1.0.0-1
+      2. Clear staging, change the build script (producing a new hash)
+      3. Rebuild → staging gets 1.0.0-1 again (it was cleared)
+      4. Install → destination already has 1.0.0-1 with a different manifest,
+         so the new build becomes 1.0.0-2
+
+    This guarantees destination never overwrites existing builds. Build IDs
+    are allowed to diverge between staging and destination, but must remain
+    identical across sync locations.
+    """
+    staging = tmp_path / "staging"
+    destination = tmp_path / "destination"
+
+    base_config["destination"] = str(destination)
+    base_config["main-package"] = "test"
+    base_config["entrypoint"] = "bin/hello"
+    base_config["packages"] = [
+        {"name": "test", "version": "1.0.0", "build": "echo v1\n"}
+    ]
+
+    ctx1 = Context.from_config(
+        base_config, cwd=tmp_path, staging=staging, engine="native"
+    )
+    pkg1 = ctx1.plist.packages["test"]
+    pkg1.out.mkdir(parents=True)
+    (pkg1.out / "bin").mkdir()
+    (pkg1.out / "bin" / "hello").write_text("v1")
+
+    _build_envs(ctx1)
+    install_all(ctx1)
+
+    assert (staging / "1.0.0-1").is_dir()
+    assert (destination / "1.0.0-1").is_dir()
+
+    shutil.rmtree(staging)
+
+    base_config["packages"] = [
+        {"name": "test", "version": "1.0.0", "build": "echo v2\n"}
+    ]
+
+    ctx2 = Context.from_config(
+        base_config, cwd=tmp_path, staging=staging, engine="native"
+    )
+    pkg2 = ctx2.plist.packages["test"]
+    pkg2.out.mkdir(parents=True)
+    (pkg2.out / "bin").mkdir()
+    (pkg2.out / "bin" / "hello").write_text("v2")
+
+    _build_envs(ctx2)
+
+    assert (staging / "1.0.0-1").is_dir()
+
+    install_all(ctx2)
+
+    assert (destination / "1.0.0-1").is_dir()
+    assert (destination / "1.0.0-2").is_dir()
+
+    manifest1 = (destination / "1.0.0-1" / "manifest").read_text()
+    manifest2 = (destination / "1.0.0-2" / "manifest").read_text()
+    assert manifest1 != manifest2
