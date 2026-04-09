@@ -19,6 +19,7 @@ class PackageList:
         check_existence: bool = True,
     ) -> None:
         self.prefix: Path = prefix
+        self.output: Path = output
         self.storepath: Path = output / Path(".store")
         self.final_storepath: Path = prefix / ".store"
         self.config: Config = config

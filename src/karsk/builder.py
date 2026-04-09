@@ -88,7 +88,7 @@ exec "$ENTRY_POINT" "${{FORWARD_ARGS[@]}}"
 
 
 def _create_wrapper_script(ctx: Context) -> None:
-    bin_dir = ctx.prefix / "bin"
+    bin_dir = ctx.output / "bin"
     bin_dir.mkdir(parents=True, exist_ok=True)
 
     wrapper_script = bin_dir / "run"
@@ -205,14 +205,14 @@ def _build_packages(ctx: Context) -> None:
 
 def _build_envs(ctx: Context) -> None:
     pkg = ctx.plist.packages[ctx.config.main_package]
-    path = _get_build_path(ctx.prefix, pkg)
+    path = _get_build_path(ctx.output, pkg)
     assert path is not None
     _build_env_for_package(path, pkg)
 
     default_links: dict[str, str] = {"latest": "^", "stable": "latest"}
     make_links(
         links={**default_links, **ctx.config.links},
-        prefix=ctx.prefix,
+        prefix=ctx.output,
     )
     _create_wrapper_script(ctx)
 
@@ -255,7 +255,4 @@ def _get_build_path(base: Path, finalpkg: Package) -> Path | None:
 def build_all(ctx: Context) -> None:
     _build_packages(ctx)
 
-    if ctx.engine_name == "native":
-        _build_envs(ctx)
-    else:
-        warn("FIXME: Make _build_envs work within containers")
+    _build_envs(ctx)

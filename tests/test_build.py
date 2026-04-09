@@ -260,3 +260,32 @@ def test_hello_world_example(tmp_path, monkeypatch):
     result = subprocess.run([str(wrapper)], capture_output=True, text=True)
     assert result.returncode == 0
     assert "running with args:" in result.stdout
+
+
+def test_build_with_non_local_prefix(tmp_path, base_config):
+    from karsk.builder import _build_envs
+
+    output = tmp_path / "output"
+    prefix = Path("/non/existent/target/path")
+
+    base_config["packages"].append(
+        {"name": "test", "version": "1.0.0", "build": "mkdir -p $out/bin\n"}
+    )
+    base_config["main-package"] = "test"
+
+    ctx = Context.from_config(
+        base_config, cwd=tmp_path, prefix=prefix, output=output, engine="native"
+    )
+
+    pkg = ctx.plist.packages["test"]
+    pkg.out.mkdir(parents=True)
+    (pkg.out / "bin").mkdir()
+    (pkg.out / "bin" / "hello").write_text("#!/bin/bash\necho hello\n")
+
+    _build_envs(ctx)
+
+    assert (output / "bin" / "run").exists()
+    assert (output / "stable").is_symlink()
+    assert (output / "latest").is_symlink()
+    assert not Path("/non/existent").exists()
+

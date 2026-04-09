@@ -31,6 +31,10 @@ class Context:
         return self.plist.prefix
 
     @property
+    def output(self) -> Path:
+        return self.plist.output
+
+    @property
     def packages(self) -> dict[str, Package]:
         return self.plist.packages
 

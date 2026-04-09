@@ -40,14 +40,14 @@ class Sync:
     ) -> None:
         self._storepath: Path = storepath
         self._dry_run: bool = dry_run
-        self._prefix = plist.prefix
+        self._prefix = plist.output
         self._dest_prefix = dest_prefix or plist.prefix
 
         self._store_paths: list[Path] = [pkg.out for pkg in plist.packages.values()]
 
         self._env_paths: list[Path] = [
             path.parent
-            for path in plist.prefix.glob("*/manifest")
+            for path in plist.output.glob("*/manifest")
             if not path.parent.is_symlink()
             if plist.packages[plist.config.main_package].manifest == path.read_text()
         ]
@@ -62,8 +62,8 @@ class Sync:
         self._post_script.write("set -euxo pipefail\n")
         self._pre_script.write(f"mkdir -p {self._dest_prefix}\n")
         self._post_script.writelines(
-            f"ln -sfn {os.readlink(path)} {change_prefix(path, plist.prefix, self._dest_prefix)} \n"
-            for path in (plist.prefix).glob("*")
+            f"ln -sfn {os.readlink(path)} {change_prefix(path, plist.output, self._dest_prefix)} \n"
+            for path in plist.output.glob("*")
             if path.is_symlink()
             if (path / "manifest").is_file()
         )
@@ -168,7 +168,7 @@ async def _sync(
     dry_run: bool,
 ) -> None:
     plist = PackageList(config, prefix=prefix, output=output)
-    syncer = Sync(prefix / ".store", plist, dry_run=dry_run, dest_prefix=dest_prefix)
+    syncer = Sync(plist.storepath, plist, dry_run=dry_run, dest_prefix=dest_prefix)
 
     if no_async:
         for area in config.areas:

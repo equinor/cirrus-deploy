@@ -1,3 +1,4 @@
+import warnings
 import filecmp
 import os
 from subprocess import CalledProcessError
@@ -121,3 +122,35 @@ def test_failing_sync(tmp_path, base_config):
             output=tmp_path,
             dest_prefix=Path("/non-existent/destination"),
         )
+
+
+def test_sync_with_non_local_prefix(tmp_path, base_config):
+    from karsk.builder import _build_envs
+
+    output = tmp_path / "output"
+    prefix = tmp_path / "prefix"
+    # destination = tmp_path / "destination"
+
+    ctx = Context(base_config, prefix=prefix, output=output, engine="native")
+    # build_all(ctx)
+
+    pkg = ctx.packages["A"]
+    installed_file_path = pkg.out / "bin/a_file"
+    installed_file_path.parent.mkdir(parents=True)
+
+    installed_file_path.write_text("test")
+
+    # ctx_env = Context(base_config, prefix=prefix, output=output, engine="native")
+    _build_envs(ctx)
+
+    do_sync(
+        config=base_config,
+        prefix=prefix,
+        output=output,
+        # dest_prefix=destination,
+    )
+
+    synced_file_path = prefix / ".store" / pkg.out.name / "bin/a_file"
+    assert filecmp.cmp(installed_file_path, synced_file_path, shallow=True)
+    assert os.path.islink(prefix / "latest")
+    assert not Path("/non/existent").exists()
