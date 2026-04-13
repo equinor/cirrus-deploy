@@ -4,7 +4,7 @@ import hashlib
 from functools import cached_property
 from pathlib import Path
 
-from karsk.config import PackageConfig, FileConfig, GitConfig
+from karsk.config import ArchiveConfig, PackageConfig, FileConfig, GitConfig
 
 
 SCRIPTS = Path(__file__).parent / "scripts"
@@ -50,6 +50,8 @@ class Package:
             return None
         elif isinstance(self.config.src, GitConfig):
             return self.cache / f"{self.config.name}-{self.config.src.ref}.git"
+        elif isinstance(self.config.src, ArchiveConfig):
+            return self.cache / f"{self.config.name}-{self.config.version}"
         elif isinstance(self.config.src, FileConfig):
             assert self.config.src.fullpath is not None
             return self.config.src.fullpath

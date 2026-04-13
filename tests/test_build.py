@@ -1,13 +1,13 @@
 import os
 import subprocess
 from pathlib import Path
-from unittest.mock import patch
 
+from karsk.config import GitConfig
 import pytest
 
 from karsk.builder import build_all
 from karsk.context import Context
-from karsk.fetchers import git_checkout
+from karsk.fetchers import fetch_git
 
 
 @pytest.fixture
@@ -31,41 +31,50 @@ def base_config():
         ),
     ],
 )
-def test_clean_package_cache_on_rebuild(
-    tmp_path, base_config, config_update, script_content
+async def test_clean_package_cache_on_rebuild(
+    tmp_path, base_config, config_update, script_content, mocker
 ):
-    with patch("karsk.fetchers.subprocess") as mocked_subprocess:
-        base_config["packages"].append(
-            {
-                "name": "A",
-                "version": "0.0",
-                "depends": [],
-                "build": script_content,
-                **config_update,
-            }
-        )
+    process = mocker.AsyncMock("asyncio.subprocess.Process")
+    process.wait = mocker.AsyncMock(
+        return_value=os.EX_OK, name="asyncio.subprocess.Proccess.wait()"
+    )
+    create_subprocess_exec = mocker.patch(
+        "asyncio.create_subprocess_exec", return_value=process
+    )
 
-        ctx = Context.from_config(
-            base_config, cwd=tmp_path, prefix=tmp_path, output=tmp_path, engine="native"
-        )
-        pck = list(ctx.packages.values())[0]
+    base_config["packages"].append(
+        {
+            "name": "foo",
+            "version": "0.0",
+            "depends": [],
+            "build": script_content,
+            **config_update,
+        }
+    )
 
-        git_checkout(pck)
+    ctx = Context.from_config(
+        base_config, cwd=tmp_path, prefix=tmp_path, output=tmp_path, engine="native"
+    )
+    pkg = ctx["foo"]
+    assert pkg.src is not None
+    assert isinstance(pkg.config.src, GitConfig)
 
-        # Checkout will use subpross run on the git command
-        # We verify that it first is called with git init
-        git_commands = [
-            call_args[0][0][1] for call_args in mocked_subprocess.run.call_args_list
-        ]
-        assert "init" in git_commands
+    await fetch_git(pkg.config.src, pkg.src)
 
-        git_checkout(pck)
+    # Checkout will use subpross run on the git command
+    # We verify that it first is called with git init
+    git_commands = [
+        call_args[0][1] for call_args in create_subprocess_exec.call_args_list
+    ]
+    assert "init" in git_commands
 
-        # And when we do it again, we want a git clean
-        git_commands = [
-            call_args[0][0][1] for call_args in mocked_subprocess.run.call_args_list
-        ]
-        assert "clean" in git_commands
+    await fetch_git(pkg.config.src, pkg.src)
+
+    # And when we do it again, we want a git clean
+    git_commands = [
+        call_args[0][1] for call_args in create_subprocess_exec.call_args_list
+    ]
+    assert "clean" in git_commands
 
 
 async def test_not_overwrite_user_set_links_with_default(tmp_path, base_config):

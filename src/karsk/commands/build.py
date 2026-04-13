@@ -14,6 +14,7 @@ from karsk.commands._common import (
 )
 from karsk.context import Context
 from karsk.engine import EngineName
+from karsk.package import Package
 
 
 @click.command("build", help="Build Cirrus and dependencies")
@@ -21,10 +22,20 @@ from karsk.engine import EngineName
 @option_prefix
 @option_output
 @option_engine
+@click.option("--package", help="Build until a given package and then stop")
 def subcommand_build(
-    config_file: Path, prefix: Path, output: Path, engine: EngineName | None
+    config_file: Path,
+    prefix: Path,
+    output: Path,
+    engine: EngineName | None,
+    package: str | None,
 ) -> None:
     context = Context.from_config_file(
         config_file, prefix=prefix, output=output, engine=engine
     )
-    asyncio.run(build_all(context))
+
+    stop_after: Package | None = None
+    if package is not None:
+        stop_after = context[package]
+
+    asyncio.run(build_all(context, stop_after))

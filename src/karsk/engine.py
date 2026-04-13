@@ -118,7 +118,6 @@ async def _engine(
         stdin=stdin,
         stdout=stdout,
         stderr=stderr,
-        start_new_session=True,
     )
 
     if input is not None:

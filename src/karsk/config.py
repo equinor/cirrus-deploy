@@ -70,7 +70,7 @@ class PackageConfig(BaseModel):
 
     name: str = Field(description="Package name")
     version: str = Field(description="Package version")
-    src: GitConfig | FileConfig | None = Field(
+    src: GitConfig | FileConfig | ArchiveConfig | None = Field(
         None, discriminator="type", description="Source setup"
     )
     depends: list[str] = Field(default_factory=list, description="List of dependencies")
@@ -93,6 +93,13 @@ class GitConfig(BaseModel):
             description="Path to SSH key for cloning non-public repositories",
         ),
     ] = None
+
+
+class ArchiveConfig(BaseModel):
+    """Download and extract an archive (currently a tarball) from a URL"""
+
+    type: Literal["archive"]
+    url: str = Field(description="URL to the archive")
 
 
 class FileConfig(BaseModel):
