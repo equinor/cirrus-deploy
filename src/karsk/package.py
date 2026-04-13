@@ -40,6 +40,11 @@ class Package:
         return self.final_storepath / f"{self.buildhash}-{self.fullname}"
 
     @property
+    def is_built(self) -> bool:
+        """Return True if the package has been built"""
+        return self.out.exists()
+
+    @property
     def src(self) -> Path | None:
         if self.config.src is None:
             return None

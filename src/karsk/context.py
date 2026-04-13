@@ -7,6 +7,7 @@ from karsk.config import Config, load_config
 from karsk.engine import Engine, EngineName, VolumeBind, get_engine
 from karsk.package import Package
 from karsk.package_list import PackageList
+from karsk.console import console
 
 
 class Context:
@@ -101,10 +102,21 @@ class Context:
             elif isinstance(package, str):
                 package = [package]
 
+            missing: list[str] = []
             for pname in package:
-                if pname in self.plist.packages:
-                    continue
-                raise ValueError(f"No package {pname} defined")
+                if (pkg := self.plist.packages.get(pname)) is None:
+                    raise ValueError(f"No package {pname} defined")
+
+                if not pkg.is_built:
+                    missing.append(pname)
+
+            if missing:
+                console.log(
+                    f"[yellow]The following packages haven't been built:[bold] {', '.join(missing)}"
+                )
+                console.log(
+                    "[yellow]Run '[bold]karsk build [CONFIG PATH][/bold]' to build all packages"
+                )
 
         return await self.engine(
             image,
