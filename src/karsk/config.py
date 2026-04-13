@@ -21,7 +21,9 @@ def get_default_output_path() -> Path:
 class Config(BaseModel):
     """Main configuration model"""
 
-    model_config = ConfigDict(alias_generator=(lambda x: x.replace("_", "-")))
+    model_config = ConfigDict(
+        alias_generator=(lambda x: x.replace("_", "-")), extra="forbid"
+    )
 
     main_package: str = Field(description="Name of primary package (eg: 'hello')")
     entrypoint: Path = Field(
