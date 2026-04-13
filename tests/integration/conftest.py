@@ -86,6 +86,7 @@ def config(tmp_path: Path, git_foo: Git, git_bar: Git) -> Config:
     }
 
     base_config = {
+        "destination": "/opt/karsk/test",
         "main-package": "bar",
         "build-image": os.path.join(os.path.dirname(__file__), "Containerfile"),
         "entrypoint": "",
@@ -98,4 +99,4 @@ def config(tmp_path: Path, git_foo: Git, git_bar: Git) -> Config:
 
 @pytest.fixture
 def context(tmp_path: Path, config: Config) -> Context:
-    return Context(config, prefix=Path("/opt/test"), output=tmp_path)
+    return Context(config, output=tmp_path)

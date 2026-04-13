@@ -25,6 +25,9 @@ class Config(BaseModel):
         alias_generator=(lambda x: x.replace("_", "-")), extra="forbid"
     )
 
+    destination: Path = Field(
+        description="Absolute path to deployment area to be managed by Karsk (eg: '/opt/karsk')"
+    )
     main_package: str = Field(description="Name of primary package (eg: 'hello')")
     entrypoint: Path = Field(
         description="Relative path to main executable to wrap in the run script (eg: 'bin/hello')"
@@ -41,11 +44,18 @@ class Config(BaseModel):
         default_factory=dict, description="Symbolic links setup"
     )
 
+    @field_validator("destination")
+    @classmethod
+    def validate_is_absolute_path(cls, value: Path) -> Path:
+        if not value.is_absolute():
+            raise ValueError(f"{value} must be an absolute path")
+        return value
+
     @field_validator("entrypoint")
     @classmethod
-    def validate_entrypoint_is_relative(cls, value: Path) -> Path:
+    def validate_is_relative_path(cls, value: Path) -> Path:
         if value.is_absolute():
-            raise ValueError(f"Entrypoint {value} must be a relative path")
+            raise ValueError(f"{value} must be a relative path")
         return value
 
     @field_validator("build_image", mode="before")
