@@ -6,6 +6,7 @@ import pytest
 @pytest.fixture
 def base_config():
     return {
+        "destination": "/opt/karsk/test",
         "main-package": "",
         "entrypoint": "",
         "build-image": os.path.join(os.path.dirname(__file__), "test_build_image"),

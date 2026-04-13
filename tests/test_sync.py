@@ -33,6 +33,7 @@ def fake_ssh(monkeypatch: pytest.MonkeyPatch) -> None:
 @pytest.fixture
 def base_config():
     config = {
+        "destination": "/opt/karsk/test",
         "main-package": "A",
         "build-image": "test_build_image",
         "entrypoint": "",

@@ -14,13 +14,16 @@ class Context:
         self,
         config: Config,
         *,
-        prefix: Path,
+        prefix: Path | None = None,
         output: Path,
         engine: EngineName | None = None,
     ) -> None:
         self.config: Config = config
         self.plist: PackageList = PackageList(
-            config, prefix=prefix, output=output, check_existence=False
+            config,
+            prefix=prefix or config.destination,
+            output=output,
+            check_existence=False,
         )
         self.engine: Engine = get_engine(engine)
         self.engine_name: EngineName | None = engine
@@ -41,7 +44,7 @@ class Context:
         cls,
         config: Path,
         *,
-        prefix: Path,
+        prefix: Path | None = None,
         output: Path,
         engine: EngineName | None = None,
     ) -> Self:
@@ -54,7 +57,7 @@ class Context:
         data: dict[str, Any],
         *,
         cwd: Path,
-        prefix: Path,
+        prefix: Path | None = None,
         output: Path,
         engine: EngineName | None = None,
     ) -> Self:

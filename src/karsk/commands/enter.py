@@ -34,5 +34,6 @@ def subcommand_enter(
     if args == ():
         args = ("bash",)
 
+    print(f"{prefix=}")
     ctx = Context.from_config_file(config_file, prefix=prefix, output=output)
     asyncio.run(_main(ctx, *args))
