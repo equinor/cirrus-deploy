@@ -1,5 +1,6 @@
 from __future__ import annotations
 import asyncio
+from asyncio.subprocess import DEVNULL, PIPE
 from contextlib import suppress
 from datetime import datetime
 import io
@@ -8,12 +9,13 @@ import os
 from pathlib import Path
 import shutil
 import sys
-from tempfile import TemporaryDirectory
+from tempfile import NamedTemporaryFile, TemporaryDirectory
 from warnings import warn
 
+from karsk.console import console
 from karsk.context import Context
 from karsk.engine import VolumeBind
-from karsk.fetchers import git_checkout
+from karsk.fetchers import fetch_single
 from karsk.links import make_links
 from karsk.package import Package
 from karsk.utils import redirect_output
@@ -108,10 +110,10 @@ async def _async_build(
     env: dict[str, str],
     buildlog: io.TextIOWrapper,
     volumes: list[VolumeBind],
+    cwd: Path,
 ) -> None:
-    cwd = Path("/tmp")
-
-    input = "".join(
+    tmpfile = NamedTemporaryFile(mode="w", prefix="karsk-builder", delete=False)
+    tmpfile.writelines(
         [
             "#!/usr/bin/env bash\n",
             'echo "src: $src"\n',
@@ -120,15 +122,21 @@ async def _async_build(
             pkg.config.build,
         ]
     )
+    os.chmod(tmpfile.name, 0o777)
+    tmpfile.close()
+
+    volumes.append((tmpfile.name, tmpfile.name, "ro"))
 
     proc = await ctx.engine(
         pkg.build_image,
-        "bash",
-        "/dev/stdin",
+        tmpfile.name,
         env=env,
         cwd=cwd,
         volumes=volumes,
-        input=input,
+        stdin=DEVNULL,
+        stdout=PIPE,
+        stderr=PIPE,
+        terminal=True,
     )
 
     await asyncio.gather(
@@ -152,7 +160,7 @@ async def _build(ctx: Context, pkg: Package, tmp: str) -> None:
 
     print(f"Building {pkg.fullname}...")
     try:
-        git_checkout(pkg)
+        await fetch_single(pkg)
     except BaseException:
         if pkg.src is not None:
             shutil.rmtree(pkg.src)
@@ -163,15 +171,24 @@ async def _build(ctx: Context, pkg: Package, tmp: str) -> None:
         **{x.config.name: str(x.final_out) for x in pkg.depends},
         "tmp": tmp,
         "out": str(pkg.final_out),
+        "CFLAGS": "-O3",
+        "CXXFLAGS": "-O3",
+        "FOPTFLAGS": "-O3",
+        "MAKEFLAGS": "-j10",
     }
 
     volumes: list[VolumeBind] = [(x.out, x.final_out, "ro") for x in pkg.depends]
     if pkg.src is not None:
+        env["src"] = str(pkg.src) if ctx.engine_name == "native" else "/tmp/pkgsrc"
+
+    cwd = Path("/tmp")
+    if pkg.src is not None and pkg.src.is_dir():
         if ctx.engine_name == "native":
-            env["src"] = str(pkg.src)
+            cwd = pkg.src
         else:
             volumes.append((pkg.src, "/tmp/pkgsrc", "rw"))
-            env["src"] = "/tmp/pkgsrc"
+            cwd = Path("/tmp/pkgsrc")
+
     volumes.append((pkg.out, pkg.final_out, "rw"))
 
     with open(pkg.out / "build.log", "w") as buildlog:
@@ -182,7 +199,7 @@ async def _build(ctx: Context, pkg: Package, tmp: str) -> None:
         print("------ BUILD  LOG ------", file=buildlog)
 
         try:
-            await _async_build(ctx, pkg, env, buildlog, volumes)
+            await _async_build(ctx, pkg, env, buildlog, volumes, cwd)
         except BaseException as exc:
             for i in range(1000):
                 fail_path = pkg.storepath / f"fail-{pkg.fullname}-{i}"
@@ -197,10 +214,13 @@ async def _build(ctx: Context, pkg: Package, tmp: str) -> None:
             )
 
 
-async def _build_packages(ctx: Context) -> None:
+async def _build_packages(ctx: Context, stop_after: Package | None = None) -> None:
     for pkg in ctx.plist.packages.values():
         with TemporaryDirectory() as tmp:
             await _build(ctx, pkg, tmp)
+        if pkg is stop_after:
+            console.log(f"Stopping after {pkg.config.name} as requested")
+            break
 
 
 def _build_envs(ctx: Context) -> None:
@@ -252,8 +272,10 @@ def _get_build_path(base: Path, finalpkg: Package) -> Path | None:
     )
 
 
-async def build_all(ctx: Context) -> None:
-    await _build_packages(ctx)
+async def build_all(ctx: Context, stop_after: Package | None = None) -> None:
+    await _build_packages(ctx, stop_after)
+    if stop_after is not None:
+        return
 
     if ctx.engine_name == "native":
         _build_envs(ctx)

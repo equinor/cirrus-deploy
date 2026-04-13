@@ -5,3 +5,4 @@ RUN dnf -y install which
 RUN dnf -y install python3.11
 RUN dnf -y install gcc-gfortran
 RUN dnf -y install git
+RUN dnf -y install cmake

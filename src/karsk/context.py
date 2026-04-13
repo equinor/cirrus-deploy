@@ -22,8 +22,8 @@ class Context:
         self.config: Config = config
         self.plist: PackageList = PackageList(
             config,
-            prefix=prefix or config.destination,
-            output=output,
+            prefix=(prefix or config.destination).absolute(),
+            output=output.absolute(),
             check_existence=False,
         )
         self.engine: Engine = get_engine(engine)

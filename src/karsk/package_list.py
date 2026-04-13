@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from itertools import chain
 import sys
 from pathlib import Path
 import networkx as nx
@@ -32,17 +33,27 @@ class PackageList:
             for dep in package.depends:
                 graph.add_edge(dep, package.name)
 
+        transitive_depends: dict[Package, list[Package]] = {}
         self.packages: dict[str, Package] = {}
         for node in nx.topological_sort(graph):
             build = buildmap[node]
-            self.packages[node] = Package(
+
+            direct_depends = [self.packages[x] for x in build.depends]
+            node_depends = [
+                *direct_depends,
+                *chain.from_iterable(transitive_depends[x] for x in direct_depends),
+            ]
+
+            new_package = Package(
                 self.storepath,
                 self.final_storepath,
                 build,
-                [self.packages[x] for x in build.depends],
+                node_depends,
                 config.build_image,
                 output / "cache",
             )
+            transitive_depends[new_package] = node_depends
+            self.packages[node] = new_package
 
         if check_existence:
             self._check_existence()
