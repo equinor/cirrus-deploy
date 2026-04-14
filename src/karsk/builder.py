@@ -239,9 +239,11 @@ def _build_envs(ctx: Context) -> None:
     _create_wrapper_script(ctx)
 
 
-def _build_env_for_package(base: Path, finalpkg: Package) -> None:
+def _build_env_for_package(
+    base: Path, finalpkg: Package, *, use_final_out: bool = False
+) -> None:
     for pkg in chain([finalpkg], finalpkg.depends):
-        out = pkg.out.resolve()
+        out = (pkg.final_out if use_final_out else pkg.out).resolve()
         for srcdir, subdirs, files in os.walk(out):
             dstdir = base / srcdir[len(str(out)) + 1 :]
             dstdir.mkdir(parents=True, exist_ok=True)
@@ -283,3 +285,33 @@ async def build_all(ctx: Context, stop_after: Package | None = None) -> None:
         _build_envs(ctx)
     else:
         warn("FIXME: Make _build_envs work within containers")
+
+
+def install_all(ctx: Context) -> None:
+    destination = ctx.destination
+    destination.mkdir(parents=True, exist_ok=True)
+
+    for pkg in ctx.plist.packages.values():
+        if not pkg.out.exists():
+            sys.exit(
+                f"Package {pkg.fullname} has not been built. Run 'karsk build' first."
+            )
+        if pkg.final_out.exists():
+            print(f"Already installed: {pkg.fullname}", file=sys.stderr)
+            continue
+        pkg.final_out.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copytree(pkg.out, pkg.final_out)
+        print(f"Installed {pkg.fullname} to {pkg.final_out}")
+
+    main_pkg = ctx.plist.packages[ctx.config.main_package]
+    path = _get_build_path(destination, main_pkg)
+    if path is None:
+        return
+    _build_env_for_package(path, main_pkg, use_final_out=True)
+
+    default_links: dict[str, str] = {"latest": "^", "stable": "latest"}
+    make_links(
+        links={**default_links, **ctx.config.links},
+        destination=destination,
+    )
+    _create_wrapper_script(ctx)
