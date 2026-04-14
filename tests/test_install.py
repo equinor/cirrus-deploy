@@ -1,0 +1,135 @@
+import os
+import subprocess
+from pathlib import Path
+
+import yaml
+import pytest
+
+from karsk.builder import build_all, install_all
+from karsk.context import Context
+
+
+@pytest.fixture
+def base_config():
+    return {
+        "destination": "/opt/karsk/test",
+        "main-package": "test",
+        "entrypoint": "bin/test_script.sh",
+        "build-image": os.path.join(os.path.dirname(__file__), "test_build_image"),
+        "packages": [],
+    }
+
+
+async def test_install_copies_to_destination(tmp_path, base_config):
+    build_dir = tmp_path / "build"
+    destination = tmp_path / "destination"
+    base_config["destination"] = str(build_dir)
+
+    (tmp_path / "script.sh").write_text(
+        "#!/usr/bin/env bash\necho hello", encoding="utf-8", newline="\n"
+    )
+    base_config["packages"].append(
+        {
+            "name": "test",
+            "version": "1.0.0",
+            "src": {"type": "file", "path": str(tmp_path / "script.sh")},
+            "build": "mkdir -p $out/bin\ncp $src $out/bin/test_script.sh\nchmod +x $out/bin/test_script.sh",
+        }
+    )
+
+    build_ctx = Context.from_config(
+        base_config, cwd=tmp_path, staging=build_dir, engine="native"
+    )
+    await build_all(build_ctx, stop_after=build_ctx["test"])
+
+    base_config["destination"] = str(destination)
+    install_ctx = Context.from_config(
+        base_config, cwd=tmp_path, staging=build_dir, engine="native"
+    )
+
+    assert not destination.exists()
+
+    install_all(install_ctx)
+
+    assert destination.exists()
+    assert (destination / ".store").is_dir()
+    assert (destination / "bin" / "run").exists()
+    assert (destination / "latest").is_symlink()
+    assert (destination / "stable").is_symlink()
+
+    wrapper = destination / "bin" / "run"
+    result = subprocess.run([str(wrapper)], capture_output=True, text=True)
+    assert result.returncode == 0
+    assert "hello" in result.stdout
+
+
+async def test_install_idempotent(tmp_path, base_config):
+    build_dir = tmp_path / "build"
+    destination = tmp_path / "destination"
+    base_config["destination"] = str(build_dir)
+
+    base_config["packages"].append(
+        {
+            "name": "test",
+            "version": "1.0.0",
+            "build": "mkdir -p $out/bin\n",
+        }
+    )
+
+    build_ctx = Context.from_config(
+        base_config, cwd=tmp_path, staging=build_dir, engine="native"
+    )
+    await build_all(build_ctx, stop_after=build_ctx["test"])
+
+    base_config["destination"] = str(destination)
+    install_ctx = Context.from_config(
+        base_config, cwd=tmp_path, staging=build_dir, engine="native"
+    )
+
+    install_all(install_ctx)
+    assert (destination / "1.0.0-1").is_dir()
+
+    install_all(install_ctx)
+    assert (destination / "1.0.0-1").is_dir()
+    assert not (destination / "1.0.0-2").exists()
+
+
+async def test_install_hello_world_example(tmp_path, monkeypatch):
+    import shutil
+
+    example_dir = Path(__file__).parent.parent / "examples" / "hello_world"
+    work_dir = tmp_path / "hello_world"
+    shutil.copytree(example_dir, work_dir, ignore=shutil.ignore_patterns("output"))
+
+    build_dir = tmp_path / "build"
+    destination = tmp_path / "installed"
+
+    config_path = work_dir / "config.yaml"
+    config_data = yaml.safe_load(config_path.read_text())
+    config_data["destination"] = str(build_dir)
+    config_path.write_text(yaml.dump(config_data))
+
+    monkeypatch.chdir(work_dir)
+
+    build_ctx = Context.from_config_file(
+        Path("config.yaml"), staging=build_dir, engine="native"
+    )
+    await build_all(build_ctx, stop_after=build_ctx["hello"])
+
+    config_data["destination"] = str(destination)
+    config_path.write_text(yaml.dump(config_data))
+
+    install_ctx = Context.from_config_file(
+        Path("config.yaml"), staging=build_dir, engine="native"
+    )
+
+    assert not destination.exists()
+
+    install_all(install_ctx)
+
+    assert destination.exists()
+    wrapper = destination / "bin" / "run"
+    assert wrapper.exists()
+    result = subprocess.run([str(wrapper)], capture_output=True, text=True)
+    assert result.returncode == 0
+    assert "running with args:" in result.stdout
