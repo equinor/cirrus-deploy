@@ -14,10 +14,6 @@ import pydantic
 import yaml
 
 
-def get_default_output_path() -> Path:
-    return Path("output")
-
-
 class Config(BaseModel):
     """Main configuration model"""
 

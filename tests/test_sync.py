@@ -53,7 +53,7 @@ def base_config():
 
 
 async def _deploy_config(config, prefix=None):
-    context = Context(config, prefix=prefix, output=prefix, engine="native")
+    context = Context(config, prefix=prefix, staging=prefix, engine="native")
     await build_all(context)
     return context
 
@@ -102,7 +102,7 @@ async def test_successful_sync(tmp_path, base_config):
     await sync_all(
         config=base_config,
         prefix=tmp_path,
-        output=tmp_path,
+        staging=tmp_path,
         dest_prefix=destination,
         no_async=False,
         dry_run=False,
@@ -121,7 +121,7 @@ async def test_failing_sync(tmp_path, base_config):
         await sync_all(
             config=base_config,
             prefix=tmp_path,
-            output=tmp_path,
+            staging=tmp_path,
             dest_prefix=Path("/non-existent/destination"),
             no_async=False,
             dry_run=False,

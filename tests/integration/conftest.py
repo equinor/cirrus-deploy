@@ -99,4 +99,4 @@ def config(tmp_path: Path, git_foo: Git, git_bar: Git) -> Config:
 
 @pytest.fixture
 def context(tmp_path: Path, config: Config) -> Context:
-    return Context(config, output=tmp_path)
+    return Context(config, staging=tmp_path)

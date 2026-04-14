@@ -10,7 +10,7 @@ from pathlib import Path
 
 import click
 
-from karsk.commands._common import argument_config_file, option_output, option_prefix
+from karsk.commands._common import argument_config_file, option_staging, option_prefix
 from karsk.config import Config, AreaConfig, load_config
 from karsk.package_list import PackageList
 from karsk.utils import redirect_output
@@ -162,12 +162,12 @@ class Sync:
 async def sync_all(
     config: Config,
     prefix: Path,
-    output: Path,
+    staging: Path,
     dest_prefix: Path | None,
     no_async: bool,
     dry_run: bool,
 ) -> None:
-    plist = PackageList(config, prefix=prefix, output=output)
+    plist = PackageList(config, prefix=prefix, staging=staging)
     syncer = Sync(prefix / ".store", plist, dry_run=dry_run, dest_prefix=dest_prefix)
 
     if no_async:
@@ -188,7 +188,7 @@ async def sync_all(
 @click.command("sync", help="Synchronise all locations")
 @argument_config_file
 @option_prefix
-@option_output
+@option_staging
 @click.option(
     "--no-async",
     help="Don't deploy asynchronously",
@@ -201,14 +201,14 @@ async def sync_all(
     default=False,
 )
 def subcommand_sync(
-    config_file: Path, prefix: Path, output: Path, no_async: bool, dry_run: bool
+    config_file: Path, prefix: Path, staging: Path, no_async: bool, dry_run: bool
 ) -> None:
     config = load_config(config_file)
     asyncio.run(
         sync_all(
             config,
             prefix=prefix,
-            output=output,
+            staging=staging,
             no_async=no_async,
             dry_run=dry_run,
             dest_prefix=None,

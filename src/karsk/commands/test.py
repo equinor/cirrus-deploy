@@ -22,7 +22,7 @@ def subcommand_test(config_file: Path, prefix: Path, args: tuple[str, ...]) -> N
     import pytest
 
     context = Context.from_config_file(
-        config_file, prefix=prefix, output=Path("output")
+        config_file, prefix=prefix, staging=Path("output")
     )
 
     testpath = config_file.parent / "deploy_tests"
