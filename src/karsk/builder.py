@@ -188,6 +188,8 @@ async def _build(ctx: Context, pkg: Package, tmp: str) -> None:
         else:
             volumes.append((pkg.src, "/tmp/pkgsrc", "rw"))
             cwd = Path("/tmp/pkgsrc")
+    elif pkg.src is not None and ctx.engine_name != "native":
+        volumes.append((pkg.src, "/tmp/pkgsrc", "ro"))
 
     volumes.append((pkg.out, pkg.final_out, "rw"))
 
