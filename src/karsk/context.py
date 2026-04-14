@@ -16,14 +16,14 @@ class Context:
         config: Config,
         *,
         prefix: Path | None = None,
-        output: Path,
+        staging: Path,
         engine: EngineName | None = None,
     ) -> None:
         self.config: Config = config
         self.plist: PackageList = PackageList(
             config,
             prefix=(prefix or config.destination).absolute(),
-            output=output.absolute(),
+            staging=staging.absolute(),
             check_existence=False,
         )
         self.engine: Engine = get_engine(engine)
@@ -46,11 +46,11 @@ class Context:
         config: Path,
         *,
         prefix: Path | None = None,
-        output: Path,
+        staging: Path,
         engine: EngineName | None = None,
     ) -> Self:
         config_ = load_config(config)
-        return cls(config_, prefix=prefix, output=output, engine=engine)
+        return cls(config_, prefix=prefix, staging=staging, engine=engine)
 
     @classmethod
     def from_config(
@@ -59,11 +59,11 @@ class Context:
         *,
         cwd: Path,
         prefix: Path | None = None,
-        output: Path,
+        staging: Path,
         engine: EngineName | None = None,
     ) -> Self:
         config_ = Config.model_validate(data, context={"cwd": cwd})
-        return cls(config_, prefix=prefix, output=output, engine=engine)
+        return cls(config_, prefix=prefix, staging=staging, engine=engine)
 
     async def run(
         self,

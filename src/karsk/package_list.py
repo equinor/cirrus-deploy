@@ -16,11 +16,11 @@ class PackageList:
         config: Config,
         *,
         prefix: Path,
-        output: Path,
+        staging: Path,
         check_existence: bool = True,
     ) -> None:
         self.prefix: Path = prefix
-        self.storepath: Path = output / Path(".store")
+        self.storepath: Path = staging / Path(".store")
         self.final_storepath: Path = prefix / ".store"
         self.config: Config = config
         buildmap = {x.name: x for x in config.packages}
@@ -50,7 +50,7 @@ class PackageList:
                 build,
                 node_depends,
                 config.build_image,
-                output / "cache",
+                staging / "cache",
             )
             transitive_depends[new_package] = node_depends
             self.packages[node] = new_package

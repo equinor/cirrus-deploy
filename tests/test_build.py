@@ -53,7 +53,7 @@ async def test_clean_package_cache_on_rebuild(
     )
 
     ctx = Context.from_config(
-        base_config, cwd=tmp_path, prefix=tmp_path, output=tmp_path, engine="native"
+        base_config, cwd=tmp_path, prefix=tmp_path, staging=tmp_path, engine="native"
     )
     pkg = ctx["foo"]
     assert pkg.src is not None
@@ -84,7 +84,7 @@ async def test_not_overwrite_user_set_links_with_default(tmp_path, base_config):
     base_config["main-package"] = "test"
 
     ctx = Context.from_config(
-        base_config, cwd=tmp_path, prefix=tmp_path, output=tmp_path, engine="native"
+        base_config, cwd=tmp_path, prefix=tmp_path, staging=tmp_path, engine="native"
     )
     await build_all(ctx)
 
@@ -102,7 +102,7 @@ async def test_not_overwrite_user_set_links_with_default(tmp_path, base_config):
     base_config["links"] = {"stable": "1.0.0"}
 
     ctx = Context.from_config(
-        base_config, cwd=tmp_path, prefix=tmp_path, output=tmp_path, engine="native"
+        base_config, cwd=tmp_path, prefix=tmp_path, staging=tmp_path, engine="native"
     )
     await build_all(ctx)
 
@@ -134,7 +134,7 @@ async def _build_wrapper(tmp_path, base_config, version="1.0.0", preamble=""):
     base_config["main-package"] = "test"
 
     ctx = Context.from_config(
-        base_config, cwd=tmp_path, prefix=tmp_path, output=tmp_path, engine="native"
+        base_config, cwd=tmp_path, prefix=tmp_path, staging=tmp_path, engine="native"
     )
     await build_all(ctx)
 
@@ -229,7 +229,7 @@ async def test_not_overwrite_user_set_version_alias_with_default(tmp_path, base_
     base_config["main-package"] = "test"
 
     ctx = Context.from_config(
-        base_config, cwd=tmp_path, prefix=tmp_path, output=tmp_path, engine="native"
+        base_config, cwd=tmp_path, prefix=tmp_path, staging=tmp_path, engine="native"
     )
     await build_all(ctx)
 
@@ -243,7 +243,7 @@ async def test_not_overwrite_user_set_version_alias_with_default(tmp_path, base_
     base_config["links"] = {"1.1": "1.0"}
 
     ctx = Context.from_config(
-        base_config, cwd=tmp_path, prefix=tmp_path, output=tmp_path, engine="native"
+        base_config, cwd=tmp_path, prefix=tmp_path, staging=tmp_path, engine="native"
     )
     await build_all(ctx)
 
@@ -263,7 +263,7 @@ async def test_hello_world_example(tmp_path, monkeypatch):
     monkeypatch.chdir(work_dir)
 
     ctx = Context.from_config_file(
-        Path("config.yaml"), prefix=tmp_path, output=tmp_path, engine="native"
+        Path("config.yaml"), prefix=tmp_path, staging=tmp_path, engine="native"
     )
     await build_all(ctx)
 
