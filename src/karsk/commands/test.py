@@ -12,18 +12,11 @@ from karsk.context import Context
     "config-file",
     type=Path,
 )
-@click.option(
-    "--prefix",
-    default="./output/prefix",
-    type=Path,
-)
 @click.argument("args", nargs=-1)
-def subcommand_test(config_file: Path, prefix: Path, args: tuple[str, ...]) -> None:
+def subcommand_test(config_file: Path, args: tuple[str, ...]) -> None:
     import pytest
 
-    context = Context.from_config_file(
-        config_file, prefix=prefix, staging=Path("output")
-    )
+    context = Context.from_config_file(config_file, staging=Path("output"))
 
     testpath = config_file.parent / "deploy_tests"
     if not testpath.is_dir():

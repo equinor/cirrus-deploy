@@ -4,7 +4,6 @@ import click
 
 
 argument_config_file = click.argument("config-file", type=Path)
-option_prefix = click.option("--prefix", type=Path)
 option_staging = click.option(
     "--staging", help="Path to staging area", default="./staging", type=Path
 )

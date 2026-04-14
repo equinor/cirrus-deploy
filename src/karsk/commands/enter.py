@@ -7,7 +7,7 @@ import sys
 
 import click
 
-from karsk.commands._common import argument_config_file, option_staging, option_prefix
+from karsk.commands._common import argument_config_file, option_staging
 from karsk.context import Context
 from karsk.console import console
 
@@ -29,14 +29,11 @@ async def _main(ctx: Context, *args: str) -> None:
 @click.command("enter", help="Enter environment")
 @argument_config_file
 @click.argument("args", nargs=-1)
-@option_prefix
 @option_staging
-def subcommand_enter(
-    config_file: Path, prefix: Path, staging: Path, args: tuple[str, ...]
-) -> None:
+def subcommand_enter(config_file: Path, staging: Path, args: tuple[str, ...]) -> None:
     if args == ():
         args = ("bash",)
 
-    ctx = Context.from_config_file(config_file, prefix=prefix, staging=staging)
-    console.log("Destination path:", ctx.prefix)
+    ctx = Context.from_config_file(config_file, staging=staging)
+    console.log("Destination path:", ctx.destination)
     asyncio.run(_main(ctx, *args))

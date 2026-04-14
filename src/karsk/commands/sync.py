@@ -10,14 +10,10 @@ from pathlib import Path
 
 import click
 
-from karsk.commands._common import argument_config_file, option_staging, option_prefix
+from karsk.commands._common import argument_config_file, option_staging
 from karsk.config import Config, AreaConfig, load_config
 from karsk.package_list import PackageList
 from karsk.utils import redirect_output
-
-
-def change_prefix(path: Path, old_prefix: Path, new_prefix: Path) -> Path:
-    return new_prefix / path.relative_to(old_prefix)
 
 
 class Sync:
@@ -32,22 +28,19 @@ class Sync:
 
     def __init__(
         self,
-        storepath: Path,
         plist: PackageList,
         *,
         dry_run: bool = False,
-        dest_prefix: Path | None = None,
     ) -> None:
-        self._storepath: Path = storepath
+        self._destination: Path = plist.config.destination
+        self._storepath: Path = plist.config.destination / ".store"
         self._dry_run: bool = dry_run
-        self._prefix = plist.prefix
-        self._dest_prefix = dest_prefix or plist.prefix
 
         self._store_paths: list[Path] = [pkg.out for pkg in plist.packages.values()]
 
         self._env_paths: list[Path] = [
             path.parent
-            for path in plist.prefix.glob("*/manifest")
+            for path in self._destination.glob("*/manifest")
             if not path.parent.is_symlink()
             if plist.packages[plist.config.main_package].manifest == path.read_text()
         ]
@@ -55,15 +48,15 @@ class Sync:
         # Create preliminary script
         self._pre_script = io.StringIO()
         self._pre_script.write("set -euxo pipefail\n")
-        self._pre_script.write(f"mkdir -p {self._dest_prefix}/.store\n")
+        self._pre_script.write(f"mkdir -p {self._storepath}\n")
+        self._pre_script.write(f"mkdir -p {self._destination}\n")
 
         # Create symlinking script
         self._post_script = io.StringIO()
         self._post_script.write("set -euxo pipefail\n")
-        self._pre_script.write(f"mkdir -p {self._dest_prefix}\n")
         self._post_script.writelines(
-            f"ln -sfn {os.readlink(path)} {change_prefix(path, plist.prefix, self._dest_prefix)} \n"
-            for path in (plist.prefix).glob("*")
+            f"ln -sfn {os.readlink(path)} {path} \n"
+            for path in self._destination.glob("*")
             if path.is_symlink()
             if (path / "manifest").is_file()
         )
@@ -76,7 +69,7 @@ class Sync:
         await self._rsync(area, self._store_paths, self._storepath, context=".store")
 
         # 3. Sync environments (eg. versions/1.0.2-2)
-        await self._rsync(area, self._env_paths, self._prefix)
+        await self._rsync(area, self._env_paths, self._destination)
 
         # 4. Sync all symlinks
         await self._bash(area, self._post_script.getvalue(), context="symlinks")
@@ -109,7 +102,7 @@ class Sync:
             shlex.join(self.RSH),
             "--progress",
             *paths,
-            f"{area.host}:{change_prefix(parent, self._prefix, self._dest_prefix)}",
+            f"{area.host}:{parent}",
             context=context,
         )
 
@@ -161,14 +154,12 @@ class Sync:
 
 async def sync_all(
     config: Config,
-    prefix: Path,
     staging: Path,
-    dest_prefix: Path | None,
     no_async: bool,
     dry_run: bool,
 ) -> None:
-    plist = PackageList(config, prefix=prefix, staging=staging)
-    syncer = Sync(prefix / ".store", plist, dry_run=dry_run, dest_prefix=dest_prefix)
+    plist = PackageList(config, staging=staging)
+    syncer = Sync(plist, dry_run=dry_run)
 
     if no_async:
         for area in config.areas:
@@ -187,7 +178,6 @@ async def sync_all(
 
 @click.command("sync", help="Synchronise all locations")
 @argument_config_file
-@option_prefix
 @option_staging
 @click.option(
     "--no-async",
@@ -201,16 +191,14 @@ async def sync_all(
     default=False,
 )
 def subcommand_sync(
-    config_file: Path, prefix: Path, staging: Path, no_async: bool, dry_run: bool
+    config_file: Path, staging: Path, no_async: bool, dry_run: bool
 ) -> None:
     config = load_config(config_file)
     asyncio.run(
         sync_all(
             config,
-            prefix=prefix,
             staging=staging,
             no_async=no_async,
             dry_run=dry_run,
-            dest_prefix=None,
         )
     )

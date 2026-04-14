@@ -90,7 +90,7 @@ exec "$ENTRY_POINT" "${{FORWARD_ARGS[@]}}"
 
 
 def _create_wrapper_script(ctx: Context) -> None:
-    bin_dir = ctx.prefix / "bin"
+    bin_dir = ctx.destination / "bin"
     bin_dir.mkdir(parents=True, exist_ok=True)
 
     wrapper_script = bin_dir / "run"
@@ -225,14 +225,14 @@ async def _build_packages(ctx: Context, stop_after: Package | None = None) -> No
 
 def _build_envs(ctx: Context) -> None:
     pkg = ctx.plist.packages[ctx.config.main_package]
-    path = _get_build_path(ctx.prefix, pkg)
+    path = _get_build_path(ctx.destination, pkg)
     assert path is not None
     _build_env_for_package(path, pkg)
 
     default_links: dict[str, str] = {"latest": "^", "stable": "latest"}
     make_links(
         links={**default_links, **ctx.config.links},
-        prefix=ctx.prefix,
+        destination=ctx.destination,
     )
     _create_wrapper_script(ctx)
 
