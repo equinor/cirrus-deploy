@@ -15,14 +15,12 @@ class Context:
         self,
         config: Config,
         *,
-        prefix: Path | None = None,
         staging: Path,
         engine: EngineName | None = None,
     ) -> None:
         self.config: Config = config
         self.plist: PackageList = PackageList(
             config,
-            prefix=(prefix or config.destination).absolute(),
             staging=staging.absolute(),
             check_existence=False,
         )
@@ -30,8 +28,8 @@ class Context:
         self.engine_name: EngineName | None = engine
 
     @property
-    def prefix(self) -> Path:
-        return self.plist.prefix
+    def destination(self) -> Path:
+        return self.config.destination
 
     @property
     def packages(self) -> dict[str, Package]:
@@ -45,12 +43,11 @@ class Context:
         cls,
         config: Path,
         *,
-        prefix: Path | None = None,
         staging: Path,
         engine: EngineName | None = None,
     ) -> Self:
         config_ = load_config(config)
-        return cls(config_, prefix=prefix, staging=staging, engine=engine)
+        return cls(config_, staging=staging, engine=engine)
 
     @classmethod
     def from_config(
@@ -58,12 +55,11 @@ class Context:
         data: dict[str, Any],
         *,
         cwd: Path,
-        prefix: Path | None = None,
         staging: Path,
         engine: EngineName | None = None,
     ) -> Self:
         config_ = Config.model_validate(data, context={"cwd": cwd})
-        return cls(config_, prefix=prefix, staging=staging, engine=engine)
+        return cls(config_, staging=staging, engine=engine)
 
     async def run(
         self,

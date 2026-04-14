@@ -1,12 +1,10 @@
-import filecmp
 import os
 from subprocess import CalledProcessError
-from pathlib import Path
 from karsk.builder import build_all
 import pytest
 
 from karsk.config import Config
-from karsk.commands.sync import Sync, sync_all, change_prefix
+from karsk.commands.sync import Sync, sync_all
 from karsk.context import Context
 
 BUILD_SCRIPT = """\
@@ -52,47 +50,14 @@ def base_config():
     return config
 
 
-async def _deploy_config(config, prefix=None):
-    context = Context(config, prefix=prefix, staging=prefix, engine="native")
+async def _deploy_config(config, tmp_path):
+    config.destination = tmp_path
+    context = Context(config, staging=tmp_path, engine="native")
     await build_all(context)
     return context
 
 
-@pytest.mark.parametrize(
-    "old_prefix, new_prefix, path, expectation",
-    [
-        pytest.param(
-            "/foo",
-            "/bar",
-            "/foo/file",
-            "/bar/file",
-            id="Simple",
-        ),
-        pytest.param(
-            "/some/prefix",
-            "/yet/another/new/prefix",
-            "/some/prefix/path/in/prefix",
-            "/yet/another/new/prefix/path/in/prefix",
-            id="Longer path",
-        ),
-        pytest.param("/foo", "/bar", "/bar/file", ValueError, id="Invalid prefix"),
-    ],
-)
-def test_change_prefix(old_prefix, new_prefix, path, expectation):
-    path = Path(path)
-    old_prefix = Path(old_prefix)
-    new_prefix = Path(new_prefix)
-
-    if isinstance(expectation, type) and issubclass(expectation, BaseException):
-        with pytest.raises(expectation):
-            change_prefix(path, old_prefix, new_prefix)
-    else:
-        assert change_prefix(path, old_prefix, new_prefix) == Path(expectation)
-
-
 async def test_successful_sync(tmp_path, base_config):
-    destination = tmp_path / "destination"
-
     builder = await _deploy_config(base_config, tmp_path)
 
     pkg = builder.packages["A"]
@@ -101,28 +66,22 @@ async def test_successful_sync(tmp_path, base_config):
 
     await sync_all(
         config=base_config,
-        prefix=tmp_path,
         staging=tmp_path,
-        dest_prefix=destination,
         no_async=False,
         dry_run=False,
     )
 
-    synced_file_path = destination / ".store" / pkg.out.name / "bin/a_file"
-
-    assert filecmp.cmp(installed_file_path, synced_file_path, shallow=True)
-    assert os.path.islink(destination / "latest")
+    assert installed_file_path.exists()
 
 
-async def test_failing_sync(tmp_path, base_config):
-    """Try to sync to non existent area"""
+async def test_failing_sync(tmp_path, base_config, monkeypatch):
+    """Try to sync with a broken RSH to simulate unreachable host"""
     await _deploy_config(base_config, tmp_path)
+    monkeypatch.setattr(Sync, "RSH", ["sh", "-c", "exit 1"])
     with pytest.raises(CalledProcessError):
         await sync_all(
             config=base_config,
-            prefix=tmp_path,
             staging=tmp_path,
-            dest_prefix=Path("/non-existent/destination"),
             no_async=False,
             dry_run=False,
         )

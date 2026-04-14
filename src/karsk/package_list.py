@@ -15,17 +15,15 @@ class PackageList:
         self,
         config: Config,
         *,
-        prefix: Path,
         staging: Path,
         check_existence: bool = True,
     ) -> None:
-        self.prefix: Path = prefix
-        self.storepath: Path = staging / Path(".store")
-        self.final_storepath: Path = prefix / ".store"
+        self.staging_storepath: Path = staging / Path(".store")
+        self.storepath: Path = config.destination / ".store"
         self.config: Config = config
         buildmap = {x.name: x for x in config.packages}
 
-        self.storepath.mkdir(parents=True, exist_ok=True)
+        self.staging_storepath.mkdir(parents=True, exist_ok=True)
 
         graph: nx.DiGraph[str] = nx.DiGraph()
         for package in config.packages:
@@ -45,8 +43,8 @@ class PackageList:
             ]
 
             new_package = Package(
+                self.staging_storepath,
                 self.storepath,
-                self.final_storepath,
                 build,
                 node_depends,
                 config.build_image,

@@ -67,15 +67,15 @@ def _reduce_aliases(
     _reduce_aliases(next_entries, aliases)
 
 
-def _get_auto_version_aliases(prefix: Path) -> dict[str, str]:
-    if not prefix.is_dir():
+def _get_auto_version_aliases(destination: Path) -> dict[str, str]:
+    if not destination.is_dir():
         return {}
 
     entries: dict[tuple[int, ...], str] = {}
-    for name in os.listdir(prefix):
+    for name in os.listdir(destination):
         if name[0] == ".":
             continue
-        if (prefix / name).is_symlink():
+        if (destination / name).is_symlink():
             continue
         try:
             version = Version.parse(name)
@@ -92,19 +92,19 @@ def _get_auto_version_aliases(prefix: Path) -> dict[str, str]:
 
 def make_links(
     links: dict[str, str],
-    prefix: Path,
+    destination: Path,
 ) -> None:
-    auto_aliases = _get_auto_version_aliases(prefix)
+    auto_aliases = _get_auto_version_aliases(destination)
     merged = {**auto_aliases, **links}
 
     for source, target in merged.items():
-        path = prefix / source
+        path = destination / source
 
         if target == "^":
-            target = get_latest(prefix)
+            target = get_latest(destination)
 
         path.unlink(missing_ok=True)
         path.symlink_to(target)
         print(f"Created symlink: {path} -> {target}")
 
-    validate(prefix)
+    validate(destination)

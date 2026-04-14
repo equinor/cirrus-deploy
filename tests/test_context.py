@@ -15,9 +15,7 @@ def base_config():
 
 
 def test_minimal_config(tmp_path, base_config):
-    ctx = Context.from_config(
-        base_config, cwd=tmp_path, prefix=tmp_path, staging=tmp_path
-    )
+    ctx = Context.from_config(base_config, cwd=tmp_path, staging=tmp_path)
     assert ctx.packages == {}
 
 
@@ -58,9 +56,7 @@ def test_single_package(tmp_path, base_config, config_update, script_content, sn
         }
     )
 
-    ctx = Context.from_config(
-        base_config, cwd=tmp_path, prefix=tmp_path, staging=tmp_path
-    )
+    ctx = Context.from_config(base_config, cwd=tmp_path, staging=tmp_path)
     assert len(ctx.packages) == 1
     assert "A" in ctx.packages
     snapshot.assert_match(ctx.packages["A"].buildhash, "expected_hash")
