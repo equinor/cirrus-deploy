@@ -7,18 +7,27 @@ site_dir: site
 
 nav:
   - Home: index.md
+  - Commands:
+      - karsk build: commands/build.md
+      - karsk enter: commands/enter.md
+      - karsk install: commands/install.md
+      - karsk schema: commands/schema.md
+      - karsk sync: commands/sync.md
+      - karsk test: commands/test.md
   - API Reference:
-    - karsk.config: api/config.md
+      - karsk.config: api/config.md
 
 theme:
   name: material
 
 markdown_extensions:
+  - admonition
+  - pymdownx.details
   - pymdownx.highlight:
       anchor_linenums: true
   - pymdownx.superfences
   - pymdownx.snippets:
-      base_path: .  # relative to project root
+      base_path: . # relative to project root
 
 plugins:
   - search
