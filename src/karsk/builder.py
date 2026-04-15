@@ -229,7 +229,6 @@ def _build_envs(
     *,
     base: Path | None = None,
     use_final_out: bool = False,
-    allow_existing: bool = False,
 ) -> None:
     if base is None:
         base = ctx.staging
@@ -237,9 +236,7 @@ def _build_envs(
     pkg = ctx.plist.packages[ctx.config.main_package]
     path = _get_build_path(base, pkg)
     if path is None:
-        if allow_existing:
-            return
-        assert False, f"Environment already exists in {base}"
+        return
     _build_env_for_package(path, pkg, use_final_out=use_final_out)
 
     default_links: dict[str, str] = {"latest": "^", "stable": "latest"}
@@ -311,4 +308,4 @@ def install_all(ctx: Context) -> None:
         shutil.copytree(pkg.out, pkg.final_out)
         print(f"Installed {pkg.fullname} to {pkg.final_out}")
 
-    _build_envs(ctx, base=destination, use_final_out=True, allow_existing=True)
+    _build_envs(ctx, base=destination, use_final_out=True)
