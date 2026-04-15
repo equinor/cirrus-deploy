@@ -12,7 +12,7 @@ import click
 
 from karsk.commands._common import argument_config_file, option_staging
 from karsk.config import Config, AreaConfig, load_config
-from karsk.package_list import PackageList
+from karsk.package_list import PackageList, create_packages
 from karsk.utils import redirect_output
 
 
@@ -28,21 +28,22 @@ class Sync:
 
     def __init__(
         self,
-        plist: PackageList,
+        config: Config,
+        packages: PackageList,
         *,
         dry_run: bool = False,
     ) -> None:
-        self._destination: Path = plist.config.destination
-        self._storepath: Path = plist.config.destination / ".store"
+        self._destination: Path = config.destination
+        self._storepath: Path = config.destination / ".store"
         self._dry_run: bool = dry_run
 
-        self._store_paths: list[Path] = [pkg.out for pkg in plist.packages.values()]
+        self._store_paths: list[Path] = [pkg.out for pkg in packages.values()]
 
         self._env_paths: list[Path] = [
             path.parent
             for path in self._destination.glob("*/manifest")
             if not path.parent.is_symlink()
-            if plist.packages[plist.config.main_package].manifest == path.read_text()
+            if packages[config.main_package].manifest == path.read_text()
         ]
 
         # Create preliminary script
@@ -152,14 +153,31 @@ class Sync:
             )
 
 
+def _check_existence(packages: PackageList) -> None:
+    for pkg in packages:
+        if not pkg.out.is_dir():
+            sys.exit(
+                f"{pkg.out} doesn't exist. Are you sure that '{pkg.fullname}' is installed?"
+            )
+
+
 async def sync_all(
     config: Config,
     staging: Path,
     no_async: bool,
     dry_run: bool,
 ) -> None:
-    plist = PackageList(config, staging=staging)
-    syncer = Sync(plist, dry_run=dry_run)
+    staging_storepath = staging / ".store"
+    staging_storepath.mkdir(parents=True, exist_ok=True)
+
+    packages = create_packages(
+        config,
+        staging_storepath=staging_storepath,
+        final_storepath=config.destination / ".store",
+        cache=staging / "cache",
+    )
+    _check_existence(packages)
+    syncer = Sync(config, packages, dry_run=dry_run)
 
     if no_async:
         for area in config.areas:
