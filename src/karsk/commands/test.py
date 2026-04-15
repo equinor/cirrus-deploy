@@ -22,10 +22,10 @@ def subcommand_test(config_file: Path, args: tuple[str, ...]) -> None:
     if not testpath.is_dir():
         sys.exit(f"Test directory '{testpath}' doesn't exist or is not a directory")
 
-    newpath = ":".join(str(p.out / "bin") for p in context.plist.packages.values())
+    newpath = ":".join(str(p.out / "bin") for p in context.packages.values())
     os.environ["PATH"] = f"{newpath}:{os.environ['PATH']}"
 
-    for pkg in context.plist.packages.values():
+    for pkg in context.packages.values():
         os.environ[f"{pkg.config.name}_version"] = pkg.config.version
 
     print(f"{os.environ['PATH']=}")

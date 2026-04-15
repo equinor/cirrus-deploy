@@ -297,7 +297,7 @@ def test_build_with_non_local_prefix(tmp_path, base_config):
         base_config, cwd=tmp_path, staging=staging, engine="native"
     )
 
-    pkg = ctx.plist.packages["test"]
+    pkg = ctx.packages["test"]
     pkg.out.mkdir(parents=True)
     (pkg.out / "bin").mkdir()
     (pkg.out / "bin" / "hello").write_text("#!/bin/bash\necho hello\n")
@@ -336,7 +336,7 @@ def test_install_appends_build_id_when_manifest_differs(tmp_path, base_config):
     ctx1 = Context.from_config(
         base_config, cwd=tmp_path, staging=staging, engine="native"
     )
-    pkg1 = ctx1.plist.packages["test"]
+    pkg1 = ctx1.packages["test"]
     pkg1.out.mkdir(parents=True)
     (pkg1.out / "bin").mkdir()
     (pkg1.out / "bin" / "hello").write_text("v1")
@@ -356,7 +356,7 @@ def test_install_appends_build_id_when_manifest_differs(tmp_path, base_config):
     ctx2 = Context.from_config(
         base_config, cwd=tmp_path, staging=staging, engine="native"
     )
-    pkg2 = ctx2.plist.packages["test"]
+    pkg2 = ctx2.packages["test"]
     pkg2.out.mkdir(parents=True)
     (pkg2.out / "bin").mkdir()
     (pkg2.out / "bin" / "hello").write_text("v2")

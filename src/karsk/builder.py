@@ -216,7 +216,7 @@ async def _build(ctx: Context, pkg: Package, tmp: str) -> None:
 
 
 async def _build_packages(ctx: Context, stop_after: Package | None = None) -> None:
-    for pkg in ctx.plist.packages.values():
+    for pkg in ctx.packages.values():
         with TemporaryDirectory() as tmp:
             await _build(ctx, pkg, tmp)
         if pkg is stop_after:
@@ -233,7 +233,7 @@ def _build_envs(
     if base is None:
         base = ctx.staging
 
-    pkg = ctx.plist.packages[ctx.config.main_package]
+    pkg = ctx.packages[ctx.config.main_package]
     path = _get_build_path(base, pkg)
     if path is not None:
         _build_env_for_package(path, pkg, use_final_out=use_final_out)
@@ -295,7 +295,7 @@ def install_all(ctx: Context) -> None:
     destination = ctx.destination
     destination.mkdir(parents=True, exist_ok=True)
 
-    for pkg in ctx.plist.packages.values():
+    for pkg in ctx.packages.values():
         if not pkg.out.exists():
             sys.exit(
                 f"Package {pkg.fullname} has not been built. Run 'karsk build' first."

@@ -6,7 +6,7 @@ from asyncio.subprocess import Process
 from karsk.config import Config, load_config
 from karsk.engine import Engine, EngineName, VolumeBind, get_engine
 from karsk.package import Package
-from karsk.package_list import PackageList
+from karsk.package_list import PackageList, create_packages
 from karsk.console import console
 
 
@@ -19,13 +19,19 @@ class Context:
         engine: EngineName | None = None,
     ) -> None:
         self.config: Config = config
-        self.plist: PackageList = PackageList(
-            config,
-            staging=staging.absolute(),
-            check_existence=False,
-        )
+        self._staging: Path = staging.absolute()
         self.engine: Engine = get_engine(engine)
         self.engine_name: EngineName | None = engine
+
+        staging_storepath = self._staging / ".store"
+        staging_storepath.mkdir(parents=True, exist_ok=True)
+
+        self.packages: PackageList = create_packages(
+            config,
+            staging_storepath=staging_storepath,
+            final_storepath=config.destination / ".store",
+            cache=self._staging / "cache",
+        )
 
     @property
     def destination(self) -> Path:
@@ -33,14 +39,21 @@ class Context:
 
     @property
     def staging(self) -> Path:
-        return self.plist.staging
-
-    @property
-    def packages(self) -> dict[str, Package]:
-        return self.plist.packages
+        return self._staging
 
     def __getitem__(self, key: str) -> Package:
         return self.packages[key]
+
+    def volumes(self, package_names: list[str]) -> list[VolumeBind]:
+        pnames = set(package_names)
+        for pname in package_names:
+            pkg = self.packages[pname]
+            pnames |= set(p.config.name for p in pkg.depends)
+
+        return [
+            (pkg.out, pkg.final_out, "ro")
+            for pkg in (self.packages[pname] for pname in pnames)
+        ]
 
     @classmethod
     def from_config_file(
@@ -98,13 +111,13 @@ class Context:
             image = self.config.build_image
 
             if package is None:
-                package = sorted(self.plist.packages.keys())
+                package = sorted(self.packages.keys())
             elif isinstance(package, str):
                 package = [package]
 
             missing: list[str] = []
             for pname in package:
-                if (pkg := self.plist.packages.get(pname)) is None:
+                if (pkg := self.packages.get(pname)) is None:
                     raise ValueError(f"No package {pname} defined")
 
                 if not pkg.is_built:
@@ -122,7 +135,7 @@ class Context:
             image,
             program,
             *args,
-            volumes=volumes + self.plist.volumes(package),
+            volumes=volumes + self.volumes(package),
             cwd=cwd,
             env=env,
             terminal=terminal,
