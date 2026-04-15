@@ -235,9 +235,8 @@ def _build_envs(
 
     pkg = ctx.plist.packages[ctx.config.main_package]
     path = _get_build_path(base, pkg)
-    if path is None:
-        return
-    _build_env_for_package(path, pkg, use_final_out=use_final_out)
+    if path is not None:
+        _build_env_for_package(path, pkg, use_final_out=use_final_out)
 
     default_links: dict[str, str] = {"latest": "^", "stable": "latest"}
     make_links(
