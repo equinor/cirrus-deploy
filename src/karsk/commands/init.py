@@ -13,7 +13,7 @@ def _write_file(
     path = base / name
     path.parent.mkdir(parents=True, exist_ok=True)
 
-    text = resources.files("karsk.templates").joinpath(f"{name}.in").read_text()
+    text = resources.files("karsk.data.templates").joinpath(f"{name}.in").read_text()
 
     if format_args:
         text = text.format(**format_args)

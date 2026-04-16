@@ -3,7 +3,7 @@
 destination: /opt/karsk/test
 main-package: hello
 entrypoints:
-  - bin/binary.sh
+  - binary.sh
 build-image: Containerfile
 tests: ./karsk_tests/
 

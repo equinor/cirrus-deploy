@@ -19,95 +19,7 @@ from karsk.links import make_links
 from karsk.package import Package
 from karsk.paths import Paths
 from karsk.utils import redirect_output
-
-
-SCRIPT_TEMPLATE = """#!/usr/bin/env bash
-# Auto-generated wrapper script for {package_name}
-# This script handles checking and forwarding arguments
-# to different built versions, as well as printing available
-# versions
-
-VERSION="stable"
-PRINT_VERSIONS=false
-FORWARD_ARGS=()
-
-while [[ $# -gt 0 ]]; do
-    case "$1" in
-        -v)
-            VERSION="${{2:?"-v requires a version argument"}}"
-            shift 2
-            ;;
-        --print-versions)
-            PRINT_VERSIONS=true
-            shift
-            ;;
-        *)
-            FORWARD_ARGS+=("$1")
-            shift
-            ;;
-    esac
-done
-
-BASE_DIR="$(dirname "$(dirname "$(readlink -f "${{BASH_SOURCE[0]}}")")")/versions"
-
-if [ "$PRINT_VERSIONS" = true ]; then
-    NON_NUMERIC=()
-    NUMERIC=()
-    for entry in $(ls -1 "$BASE_DIR"); do
-        [[ "$entry" == "bin" || "$entry" == .* ]] && continue
-        if [ -L "$BASE_DIR/$entry" ]; then
-            [[ "$entry" =~ ^[0-9]+\\.[0-9]+\\.[0-9]+ ]] && continue
-            line="$entry -> $(readlink "$BASE_DIR/$entry")"
-            if [[ "$entry" =~ ^[0-9] ]]; then
-                NUMERIC+=("$line")
-            else
-                NON_NUMERIC+=("$line")
-            fi
-        fi
-    done
-    if [ ${{#NON_NUMERIC[@]}} -gt 0 ]; then
-        printf '%s\\n' "${{NON_NUMERIC[@]}}" | sort -rV
-    fi
-    if [ ${{#NUMERIC[@]}} -gt 0 ]; then
-        printf '%s\\n' "${{NUMERIC[@]}}" | awk -F' -> ' '{{
-            name = $1
-            n = split(name, parts, ".")
-            printf "%s\\t%s\\t%s\\t%s\\n", parts[1], n, name, $0
-        }}' | sort -t$'\\t' -k1,1rn -k2,2n -k3,3rV | cut -f4
-    fi
-    exit 0
-fi
-
-ENTRY_POINT="$BASE_DIR/$VERSION/{entrypoint}"
-
-if [ ! -f "$ENTRY_POINT" ]; then
-    echo "Error: Entry point not found: $ENTRY_POINT" >&2
-    exit 1
-fi
-
-exec "$ENTRY_POINT" "${{FORWARD_ARGS[@]}}"
-"""
-
-
-def _create_wrapper_script(ctx: Context, bin_dir: Path) -> None:
-    if not ctx.config.entrypoints:
-        return
-
-    bin_dir.mkdir(parents=True, exist_ok=True)
-
-    for entrypoint in ctx.config.entrypoints:
-        if not entrypoint.name:
-            continue
-
-        wrapper_script = bin_dir / entrypoint.name
-
-        wrapper_script.write_text(
-            SCRIPT_TEMPLATE.format(
-                package_name=ctx.config.main_package,
-                entrypoint=entrypoint,
-            )
-        )
-        wrapper_script.chmod(0o755)
+from karsk.wrapper import install_wrapper
 
 
 async def _async_build(
@@ -212,17 +124,17 @@ async def _build(ctx: Context, pkg: Package, tmp: str) -> None:
     ]
     if src is not None:
         env["src"] = (
-            str(src) if ctx.engine_name == "native" else f"/tmp/pkgsrc/{src.name}"
+            str(src) if ctx.engine.name == "native" else f"/tmp/pkgsrc/{src.name}"
         )
 
     cwd = Path("/tmp")
     if src is not None and src.is_dir():
-        if ctx.engine_name == "native":
+        if ctx.engine.name == "native":
             cwd = src
         else:
             volumes.append((src, f"/tmp/pkgsrc/{src.name}", "O"))
             cwd = Path("/tmp/pkgsrc") / src.name
-    elif src is not None and ctx.engine_name != "native":
+    elif src is not None and ctx.engine.name != "native":
         volumes.append((src, f"/tmp/pkgsrc/{src.name}", "ro"))
 
     volumes.append((out, ctx.target_paths.out(pkg), "rw"))
@@ -257,7 +169,7 @@ async def _build_packages(ctx: Context, stop_after: Package | None = None) -> No
             break
 
 
-def _build_envs(
+async def _build_envs(
     ctx: Context,
     paths: Paths,
 ) -> None:
@@ -271,7 +183,8 @@ def _build_envs(
         links={**default_links, **ctx.config.links},
         destination=paths.versions,
     )
-    _create_wrapper_script(ctx, paths.bin)
+
+    await install_wrapper(ctx, paths)
 
 
 def _build_env_for_package(paths: Paths, env_path: Path, main_package: Package) -> None:
@@ -314,10 +227,10 @@ async def build_all(ctx: Context, stop_after: Package | None = None) -> None:
     if stop_after is not None:
         return
 
-    _build_envs(ctx, ctx.staging_paths)
+    await _build_envs(ctx, ctx.staging_paths)
 
 
-def install_all(ctx: Context) -> None:
+async def install_all(ctx: Context) -> None:
     for pkg in ctx.plist.packages.values():
         from_path = ctx.staging_paths.out(pkg)
         to_path = ctx.target_paths.out(pkg)
@@ -333,4 +246,4 @@ def install_all(ctx: Context) -> None:
         _ = shutil.copytree(from_path, to_path)
         print(f"Installed {pkg.fullname} to {to_path}")
 
-    _build_envs(ctx, ctx.target_paths)
+    await _build_envs(ctx, ctx.target_paths)

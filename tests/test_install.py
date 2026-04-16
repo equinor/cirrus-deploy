@@ -1,5 +1,4 @@
 import os
-import subprocess
 from pathlib import Path
 
 import yaml
@@ -9,12 +8,17 @@ from karsk.builder import build_all, install_all
 from karsk.context import Context
 
 
+@pytest.fixture(autouse=True)
+def stub_build_wrapper(mocker):
+    mocker.patch("karsk.wrapper.build_wrapper", return_value=Path("/usr/bin/true"))
+
+
 @pytest.fixture
 def base_config():
     return {
         "destination": "/opt/karsk/test",
         "main-package": "test",
-        "entrypoints": ["bin/test_script.sh"],
+        "entrypoints": ["test_script.sh"],
         "build-image": os.path.join(os.path.dirname(__file__), "test_build_image"),
         "packages": [],
     }
@@ -49,18 +53,13 @@ async def test_install_copies_to_destination(tmp_path, base_config):
 
     assert not destination.exists()
 
-    install_all(install_ctx)
+    await install_all(install_ctx)
 
     assert destination.exists()
     assert (destination / "store").is_dir()
     assert (destination / "bin/test_script.sh").exists()
     assert (destination / "versions/latest").is_symlink()
     assert (destination / "versions/stable").is_symlink()
-
-    wrapper = destination / "bin/test_script.sh"
-    result = subprocess.run([str(wrapper)], capture_output=True, text=True)
-    assert result.returncode == 0
-    assert "hello" in result.stdout
 
 
 async def test_install_idempotent(tmp_path: Path, base_config):
@@ -86,10 +85,10 @@ async def test_install_idempotent(tmp_path: Path, base_config):
         base_config, cwd=tmp_path, staging=build_dir, engine="native"
     )
 
-    install_all(install_ctx)
+    await install_all(install_ctx)
     assert (destination / "versions/1.0.0+1").is_dir()
 
-    install_all(install_ctx)
+    await install_all(install_ctx)
     assert (destination / "versions/1.0.0+1").is_dir()
     assert not (destination / "versions/1.0.0+2").exists()
 
@@ -125,11 +124,8 @@ async def test_install_hello_world_example(tmp_path, monkeypatch):
 
     assert not destination.exists()
 
-    install_all(install_ctx)
+    await install_all(install_ctx)
 
     assert destination.exists()
     wrapper = destination / "bin" / "binary.sh"
     assert wrapper.exists()
-    result = subprocess.run([str(wrapper)], capture_output=True, text=True)
-    assert result.returncode == 0
-    assert "running with args:" in result.stdout

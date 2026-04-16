@@ -1,0 +1,49 @@
+name: Rust wrapper
+
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+    branches: ["main"]
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        include:
+          - target: aarch64-unknown-linux-musl
+            os: ubuntu-24.04-arm
+          - target: x86_64-unknown-linux-musl
+            os: ubuntu-latest
+      fail-fast: true
+
+    runs-on: ${{ matrix.os }}
+
+    defaults:
+      run:
+        working-directory: src/karsk/data/wrapper-rs
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            src/karsk/data/wrapper-rs/target
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Set up Rust for ${{ matrix.target }}
+        run: rustup target add ${{ matrix.target }}
+      - name: Check code format
+        run: cargo fmt --check
+      - name: Run linter (Clippy)
+        run: cargo clippy
+      - name: Build
+        run: cargo build --release --target ${{ matrix.target }}
+      - name: Run tests
+        run: cargo test --target ${{ matrix.target }}

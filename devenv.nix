@@ -9,4 +9,6 @@
     uv.sync.enable = true;
     venv.enable = true;
   };
+
+  languages.rust.enable = true;
 }

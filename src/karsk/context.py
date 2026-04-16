@@ -37,7 +37,6 @@ class Context:
             check_existence=False,
         )
         self.engine: Engine = get_engine(engine, arch)
-        self.engine_name: EngineNameNative | None = engine
 
     @property
     def destination(self) -> Path:
@@ -122,6 +121,7 @@ class Context:
         cwd: str | Path | None = None,
         env: dict[str, str] | None = None,
         terminal: bool = False,
+        network: bool = True,
         stdout: IO[Any] | int | None = None,
         stderr: IO[Any] | int | None = None,
     ) -> Process:
@@ -166,6 +166,7 @@ class Context:
             cwd=cwd,
             env=env,
             terminal=terminal,
+            network=network,
             stdout=stdout,
             stderr=stderr,
         )

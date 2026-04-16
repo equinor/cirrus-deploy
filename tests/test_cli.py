@@ -23,7 +23,7 @@ def config_file(tmp_path):
     config = {
         "destination": str(tmp_path / "dest"),
         "main-package": "hello",
-        "entrypoints": ["bin/hello"],
+        "entrypoints": ["hello"],
         "build-image": str(containerfile),
         "packages": [
             {
@@ -74,8 +74,8 @@ def test_schema_runs(runner):
     assert result.exit_code == 0
 
 
-@patch("karsk.commands.build.build_all", new_callable=AsyncMock)
-def test_build_accepts_args(mock_build, runner, config_file):
+def test_build_accepts_args(mocker, runner, config_file):
+    mock_build = mocker.patch("karsk.commands.build.build_all", new_callable=AsyncMock)
     result = runner.invoke(
         cli,
         [

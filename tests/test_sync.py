@@ -1,5 +1,7 @@
 import os
 from subprocess import CalledProcessError
+
+from pathlib import Path
 from karsk.builder import build_all
 import pytest
 
@@ -11,6 +13,11 @@ BUILD_SCRIPT = """\
 mkdir $out/bin
 echo "hello world">>$out/bin/a_file
 """
+
+
+@pytest.fixture(autouse=True)
+def stub_build_wrapper(mocker):
+    mocker.patch("karsk.wrapper.build_wrapper", return_value=Path("/usr/bin/true"))
 
 
 @pytest.fixture(autouse=True)
@@ -102,7 +109,7 @@ async def test_sync_with_non_local_prefix(tmp_path, base_config, areas):
 
     installed_file_path.write_text("test")
 
-    _build_envs(ctx, ctx.staging_paths)
+    await _build_envs(ctx, ctx.staging_paths)
 
     await sync_all(
         ctx,

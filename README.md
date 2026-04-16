@@ -110,6 +110,12 @@ executable.
 See [examples](./examples) directory for examples. Use `karsk --help` to view
 documentation.
 
+# Developing
+
+## Karsk entrypoint
+
+Karsk entrypoint is a Rust application that is deployed and serves as the user-facing entrypoint.
+
 # Testing
 
 This project uses [pytest](https://pytest.org) for tests,
