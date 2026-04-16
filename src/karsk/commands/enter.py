@@ -47,7 +47,7 @@ class VolumeBindType(click.ParamType):
         return result
 
 
-async def _main(ctx: Context, *args: str, volume: VolumeBind) -> None:
+async def _main(ctx: Context, *args: str, volumes: tuple[VolumeBind, ...]) -> None:
     cwd = Path.cwd()
     home = Path.home()
 
@@ -56,12 +56,18 @@ async def _main(ctx: Context, *args: str, volume: VolumeBind) -> None:
     if not cwd.is_relative_to(home):
         cwd = Path("/")
 
-    volumes: list[VolumeBind] = [(home, home, "rw")]
-    if volume is not None:
-        volumes.append(volume)
-
     console.log(f"Entering Karsk environment using command: [blue]{shlex.join(args)}")
-    proc = await ctx.run(*args, volumes=volumes, cwd=cwd, terminal=True)
+    proc = await ctx.run(
+        *args,
+        volumes=[
+            (ctx.staging_paths.bin, ctx.target_paths.bin, "ro"),
+            (ctx.staging_paths.versions, ctx.target_paths.versions, "ro"),
+            (home, home, "rw"),
+            *volumes,
+        ],
+        cwd=cwd,
+        terminal=True,
+    )
     sys.exit(await proc.wait())
 
 
@@ -73,17 +79,17 @@ VOLUME_BIND = VolumeBindType()
 @click.argument("args", nargs=-1)
 @option_staging
 @option_engine
-@click.option("--volume", type=VOLUME_BIND)
+@click.option("-v", "--volume", multiple=True, type=VOLUME_BIND)
 def subcommand_enter(
     config_file: Path,
     staging: Path,
     args: tuple[str, ...],
     engine: EngineNameNative | None,
-    volume: VolumeBind,
+    volume: tuple[VolumeBind, ...],
 ) -> None:
     if args == ():
         args = ("bash",)
 
     ctx = Context.from_config_file(config_file, staging=staging, engine=engine)
     console.log("Destination path:", ctx.destination)
-    asyncio.run(_main(ctx, *args, volume=volume))
+    asyncio.run(_main(ctx, *args, volumes=volume))

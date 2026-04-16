@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 from pathlib import Path
 
 import click
@@ -24,4 +25,4 @@ def subcommand_install(
     engine: EngineName | None,
 ) -> None:
     context = Context.from_config_file(config_file, staging=staging, engine=engine)
-    install_all(context)
+    asyncio.run(install_all(context))

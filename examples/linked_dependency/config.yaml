@@ -2,7 +2,7 @@
 destination: /opt/karsk/linking
 main-package: app
 entrypoints:
-  - bin/app
+  - app
 build-image: Containerfile
 
 packages:

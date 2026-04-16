@@ -3,7 +3,7 @@
 destination: /opt/{name}
 main-package: {name}
 entrypoints:
-  - bin/{name}
+  - {name}
 build-image: ./Containerfile
 tests: ./karsk_tests/
 

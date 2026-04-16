@@ -1,0 +1,23 @@
+[package]
+name = "karsk-wrapper"
+version = "0.1.0"
+edition = "2024"
+
+[[bin]]
+name = "wrapper"
+path = "src/main.rs"
+
+[dependencies]
+semver = "1.0.28"
+
+[profile.release]
+opt-level = 'z'
+lto = true
+codegen-units = 1
+panic = 'abort'
+strip = true
+
+[dev-dependencies]
+
+# Version 0.10.0 of testdir exists, but is broken
+testdir = "0.9.3"

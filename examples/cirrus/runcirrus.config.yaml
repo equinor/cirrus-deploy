@@ -3,7 +3,7 @@
 destination: /prog/cirrus
 main-package: runcirrus
 entrypoints:
-  - bin/runcirrus
+  - runcirrus
 build-image: ./Containerfile
 
 packages:
