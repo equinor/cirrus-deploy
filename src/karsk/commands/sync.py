@@ -11,8 +11,9 @@ from pathlib import Path
 import click
 
 from karsk.commands._common import argument_config_file, option_staging
-from karsk.config import Config, AreaConfig, load_config
-from karsk.package_list import PackageList
+from karsk.config import AreaConfig
+from karsk.context import Context
+from karsk.paths import Paths
 from karsk.utils import redirect_output
 
 
@@ -28,35 +29,39 @@ class Sync:
 
     def __init__(
         self,
-        plist: PackageList,
+        ctx: Context,
         *,
         dry_run: bool = False,
+        from_staging: bool = False,
     ) -> None:
-        self._destination: Path = plist.config.destination
-        self._storepath: Path = plist.config.destination / ".store"
         self._dry_run: bool = dry_run
 
-        self._store_paths: list[Path] = [pkg.out for pkg in plist.packages.values()]
+        self.from_paths: Paths = ctx.staging_paths if from_staging else ctx.target_paths
+        self.to_paths: Paths = ctx.target_paths
+
+        self._store_paths: list[Path] = [
+            ctx.target_paths.out(pkg) for pkg in ctx.packages.values()
+        ]
 
         self._env_paths: list[Path] = [
             path.parent
-            for path in self._destination.glob("*/manifest")
+            for path in self.from_paths.versions.glob("*/manifest")
             if not path.parent.is_symlink()
-            if plist.packages[plist.config.main_package].manifest == path.read_text()
+            if ctx.packages[ctx.config.main_package].manifest == path.read_text()
         ]
 
         # Create preliminary script
-        self._pre_script = io.StringIO()
-        self._pre_script.write("set -euxo pipefail\n")
-        self._pre_script.write(f"mkdir -p {self._storepath}\n")
-        self._pre_script.write(f"mkdir -p {self._destination}\n")
+        self._pre_script: io.StringIO = io.StringIO()
+        _ = self._pre_script.write("set -euxo pipefail\n")
+        _ = self._pre_script.write(f"mkdir -p {self.to_paths.store}\n")
+        _ = self._pre_script.write(f"mkdir -p {self.to_paths.versions}\n")
 
         # Create symlinking script
-        self._post_script = io.StringIO()
-        self._post_script.write("set -euxo pipefail\n")
+        self._post_script: io.StringIO = io.StringIO()
+        _ = self._post_script.write("set -euxo pipefail\n")
         self._post_script.writelines(
             f"ln -sfn {os.readlink(path)} {path} \n"
-            for path in self._destination.glob("*")
+            for path in self.from_paths.versions.glob("*")
             if path.is_symlink()
             if (path / "manifest").is_file()
         )
@@ -65,11 +70,21 @@ class Sync:
         # Ensure directories are created
         await self._bash(area, self._pre_script.getvalue(), context="prescript")
 
-        # 2. Sync .store/
-        await self._rsync(area, self._store_paths, self._storepath, context=".store")
+        # 2. Sync store/
+        await self._rsync(
+            area,
+            self._store_paths,
+            self.from_paths.store,
+            context="store",
+        )
 
         # 3. Sync environments (eg. versions/1.0.2-2)
-        await self._rsync(area, self._env_paths, self._destination)
+        await self._rsync(
+            area,
+            self._env_paths,
+            self.from_paths.versions,
+            context="versions",
+        )
 
         # 4. Sync all symlinks
         await self._bash(area, self._post_script.getvalue(), context="symlinks")
@@ -153,26 +168,24 @@ class Sync:
 
 
 async def sync_all(
-    config: Config,
-    staging: Path,
+    ctx: Context,
     no_async: bool,
     dry_run: bool,
 ) -> None:
-    plist = PackageList(config, staging=staging)
-    syncer = Sync(plist, dry_run=dry_run)
+    syncer = Sync(ctx, dry_run=dry_run)
 
     if no_async:
-        for area in config.areas:
+        for area in ctx.config.areas:
             await syncer.sync_to(area)
         return
 
     results = await asyncio.gather(
-        *(syncer.sync_to(area) for area in config.areas), return_exceptions=True
+        *(syncer.sync_to(area) for area in ctx.config.areas), return_exceptions=True
     )
     for index, result in enumerate(results):
         if not isinstance(result, BaseException):
             continue
-        print(f"During syncing to {config.areas[index].name}:")
+        print(f"During syncing to {ctx.config.areas[index].name}:")
         raise result
 
 
@@ -193,11 +206,10 @@ async def sync_all(
 def subcommand_sync(
     config_file: Path, staging: Path, no_async: bool, dry_run: bool
 ) -> None:
-    config = load_config(config_file)
+    ctx = Context.from_config_file(config_file, staging=staging, engine="native")
     asyncio.run(
         sync_all(
-            config,
-            staging=staging,
+            ctx,
             no_async=no_async,
             dry_run=dry_run,
         )

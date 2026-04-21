@@ -56,10 +56,11 @@ async def test_clean_package_cache_on_rebuild(
         base_config, cwd=tmp_path, staging=tmp_path, engine="native"
     )
     pkg = ctx["foo"]
-    assert pkg.src is not None
+    src = ctx.staging_paths.src(pkg)
+    assert src is not None
     assert isinstance(pkg.config.src, GitConfig)
 
-    await fetch_git(pkg.config.src, pkg.src)
+    await fetch_git(pkg.config.src, src)
 
     # Checkout will use subpross run on the git command
     # We verify that it first is called with git init
@@ -68,7 +69,7 @@ async def test_clean_package_cache_on_rebuild(
     ]
     assert "init" in git_commands
 
-    await fetch_git(pkg.config.src, pkg.src)
+    await fetch_git(pkg.config.src, src)
 
     # And when we do it again, we want a git clean
     git_commands = [
@@ -77,7 +78,7 @@ async def test_clean_package_cache_on_rebuild(
     assert "clean" in git_commands
 
 
-async def test_not_overwrite_user_set_links_with_default(tmp_path, base_config):
+async def test_not_overwrite_user_set_links_with_default(tmp_path: Path, base_config):
     base_config["packages"].append(
         {"name": "test", "version": "1.0.0", "build": "mkdir -p $out/bin\n"}
     )
@@ -89,8 +90,8 @@ async def test_not_overwrite_user_set_links_with_default(tmp_path, base_config):
     )
     await build_all(ctx)
 
-    stable_link = tmp_path / "stable"
-    latest_link = tmp_path / "latest"
+    stable_link = tmp_path / "versions/stable"
+    latest_link = tmp_path / "versions/latest"
 
     assert str(stable_link.readlink()) == "latest"
     assert str(latest_link.readlink()) == "1.0.0-1"
@@ -236,9 +237,9 @@ async def test_not_overwrite_user_set_version_alias_with_default(tmp_path, base_
     )
     await build_all(ctx)
 
-    assert str((tmp_path / "1.0.0").readlink()) == "1.0.0-1"
-    assert str((tmp_path / "1.0").readlink()) == "1.0.0"
-    assert str((tmp_path / "1").readlink()) == "1.0"
+    assert str((tmp_path / "versions/1.0.0").readlink()) == "1.0.0-1"
+    assert str((tmp_path / "versions/1.0").readlink()) == "1.0.0"
+    assert str((tmp_path / "versions/1").readlink()) == "1.0"
 
     base_config["packages"] = [
         {"name": "test", "version": "1.1.0", "build": "mkdir -p $out/bin\n"}
@@ -250,10 +251,10 @@ async def test_not_overwrite_user_set_version_alias_with_default(tmp_path, base_
     )
     await build_all(ctx)
 
-    assert str((tmp_path / "1.0.0").readlink()) == "1.0.0-1"
-    assert str((tmp_path / "1.0").readlink()) == "1.0.0"
-    assert str((tmp_path / "1.1").readlink()) == "1.0"
-    assert str((tmp_path / "1").readlink()) == "1.1"
+    assert str((tmp_path / "versions/1.0.0").readlink()) == "1.0.0-1"
+    assert str((tmp_path / "versions/1.0").readlink()) == "1.0.0"
+    assert str((tmp_path / "versions/1.1").readlink()) == "1.0"
+    assert str((tmp_path / "versions/1").readlink()) == "1.1"
 
 
 async def test_hello_world_example(tmp_path, monkeypatch):
@@ -286,7 +287,7 @@ async def test_hello_world_example(tmp_path, monkeypatch):
 def test_build_with_non_local_prefix(tmp_path, base_config):
     from karsk.builder import _build_envs
 
-    staging = tmp_path / "output"
+    staging = tmp_path / "staging"
 
     base_config["packages"].append(
         {"name": "test", "version": "1.0.0", "build": "mkdir -p $out/bin\n"}
@@ -297,19 +298,19 @@ def test_build_with_non_local_prefix(tmp_path, base_config):
         base_config, cwd=tmp_path, staging=staging, engine="native"
     )
 
-    pkg = ctx.plist.packages["test"]
-    pkg.out.mkdir(parents=True)
-    (pkg.out / "bin").mkdir()
-    (pkg.out / "bin" / "hello").write_text("#!/bin/bash\necho hello\n")
+    pkg = ctx.out("test")
+    pkg.mkdir(parents=True)
+    (pkg / "bin").mkdir()
+    (pkg / "bin/hello").write_text("#!/bin/bash\necho hello\n")
 
-    _build_envs(ctx)
+    _build_envs(ctx, ctx.staging_paths)
 
-    assert (staging / "bin" / "run").exists()
-    assert (staging / "stable").is_symlink()
-    assert (staging / "latest").is_symlink()
+    assert (staging / "bin/run").exists()
+    assert (staging / "versions/stable").is_symlink()
+    assert (staging / "versions/latest").is_symlink()
 
 
-def test_install_appends_build_id_when_manifest_differs(tmp_path, base_config):
+def test_install_appends_build_id_when_manifest_differs(tmp_path: Path, base_config):
     """Destination is append-only: build IDs may differ from staging.
 
     Scenario:
@@ -336,16 +337,16 @@ def test_install_appends_build_id_when_manifest_differs(tmp_path, base_config):
     ctx1 = Context.from_config(
         base_config, cwd=tmp_path, staging=staging, engine="native"
     )
-    pkg1 = ctx1.plist.packages["test"]
-    pkg1.out.mkdir(parents=True)
-    (pkg1.out / "bin").mkdir()
-    (pkg1.out / "bin" / "hello").write_text("v1")
+    pkg1 = ctx1.out("test")
+    pkg1.mkdir(parents=True)
+    (pkg1 / "bin").mkdir()
+    (pkg1 / "bin/hello").write_text("v1")
 
-    _build_envs(ctx1)
+    _build_envs(ctx1, ctx1.staging_paths)
     install_all(ctx1)
 
-    assert (staging / "1.0.0-1").is_dir()
-    assert (destination / "1.0.0-1").is_dir()
+    assert (staging / "versions/1.0.0-1").is_dir()
+    assert (destination / "versions/1.0.0-1").is_dir()
 
     shutil.rmtree(staging)
 
@@ -356,20 +357,20 @@ def test_install_appends_build_id_when_manifest_differs(tmp_path, base_config):
     ctx2 = Context.from_config(
         base_config, cwd=tmp_path, staging=staging, engine="native"
     )
-    pkg2 = ctx2.plist.packages["test"]
-    pkg2.out.mkdir(parents=True)
-    (pkg2.out / "bin").mkdir()
-    (pkg2.out / "bin" / "hello").write_text("v2")
+    pkg2 = ctx2.out("test")
+    pkg2.mkdir(parents=True)
+    (pkg2 / "bin").mkdir()
+    (pkg2 / "bin/hello").write_text("v2")
 
-    _build_envs(ctx2)
+    _build_envs(ctx2, ctx1.staging_paths)
 
-    assert (staging / "1.0.0-1").is_dir()
+    assert (staging / "versions/1.0.0-1").is_dir()
 
     install_all(ctx2)
 
-    assert (destination / "1.0.0-1").is_dir()
-    assert (destination / "1.0.0-2").is_dir()
+    assert (destination / "versions/1.0.0-1").is_dir()
+    assert (destination / "versions/1.0.0-2").is_dir()
 
-    manifest1 = (destination / "1.0.0-1" / "manifest").read_text()
-    manifest2 = (destination / "1.0.0-2" / "manifest").read_text()
+    manifest1 = (destination / "versions/1.0.0-1" / "manifest").read_text()
+    manifest2 = (destination / "versions/1.0.0-2" / "manifest").read_text()
     assert manifest1 != manifest2

@@ -13,17 +13,11 @@ SCRIPTS = Path(__file__).parent / "scripts"
 class Package:
     def __init__(
         self,
-        storepath: Path,
-        final_storepath: Path,
         config: PackageConfig,
         depends: list[Package],
         build_image: Path,
-        cache: Path,
     ) -> None:
-        self.storepath = storepath.absolute()
-        self.final_storepath = final_storepath.absolute()
         self.config = config
-        self.cache = cache
         self.depends = depends
         self.build_image: Path = build_image
 
@@ -32,26 +26,19 @@ class Package:
         return f"{self.config.name}-{self.config.version}"
 
     @property
-    def out(self) -> Path:
-        return self.storepath / f"{self.buildhash}-{self.fullname}"
+    def out_relpath(self) -> Path:
+        """Path for the output directory relative to 'store'"""
+        return Path(f"{self.buildhash}-{self.fullname}")
 
     @property
-    def final_out(self) -> Path:
-        return self.final_storepath / f"{self.buildhash}-{self.fullname}"
-
-    @property
-    def is_built(self) -> bool:
-        """Return True if the package has been built"""
-        return self.out.exists()
-
-    @property
-    def src(self) -> Path | None:
+    def src_relpath(self) -> Path | None:
+        """Path for the input directory relative to 'cache'"""
         if self.config.src is None:
             return None
         elif isinstance(self.config.src, GitConfig):
-            return self.cache / f"{self.config.name}-{self.config.src.ref}.git"
+            return Path(f"{self.config.name}-{self.config.src.ref}.git")
         elif isinstance(self.config.src, ArchiveConfig):
-            return self.cache / f"{self.config.name}-{self.config.version}"
+            return Path(f"{self.config.name}-{self.config.version}")
         elif isinstance(self.config.src, FileConfig):
             assert self.config.src.fullpath is not None
             return self.config.src.fullpath
@@ -64,8 +51,12 @@ class Package:
 
         h.update(self.config.model_dump_json().encode("utf-8"))
 
-        if isinstance(self.config.src, FileConfig) and self.src is not None:
-            h.update(self.src.read_bytes())
+        if (
+            isinstance(self.config.src, FileConfig)
+            and self.src_relpath is not None
+            and self.src_relpath.is_absolute()
+        ):
+            h.update(self.src_relpath.read_bytes())
 
         for p in self.depends:
             h.update(p.buildhash.encode("utf-8"))
@@ -74,4 +65,4 @@ class Package:
 
     @cached_property
     def manifest(self) -> str:
-        return "".join(sorted(f"{x.out}\n" for x in [*self.depends, self]))
+        return "".join(sorted(f"{x.out_relpath}\n" for x in [*self.depends, self]))

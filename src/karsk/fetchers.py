@@ -7,6 +7,7 @@ import httpx
 
 from karsk.config import ArchiveConfig, GitConfig
 from karsk.console import console
+from karsk.context import Context
 from karsk.package import Package
 
 
@@ -69,9 +70,9 @@ async def fetch_archive(config: ArchiveConfig, path: Path) -> None:
         temp.rename(path)
 
 
-async def fetch_single(pkg: Package) -> None:
+async def fetch_single(ctx: Context, pkg: Package) -> None:
     config = pkg.config.src
-    path = pkg.src
+    path = ctx.staging_paths.src(pkg)
 
     if isinstance(config, GitConfig):
         assert path is not None
