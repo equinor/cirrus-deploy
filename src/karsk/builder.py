@@ -200,17 +200,21 @@ async def _build(ctx: Context, pkg: Package, tmp: str) -> None:
 
     volumes: list[VolumeBind] = [(x.out, x.final_out, "ro") for x in pkg.depends]
     if pkg.src is not None:
-        env["src"] = str(pkg.src) if ctx.engine_name == "native" else "/tmp/pkgsrc"
+        env["src"] = (
+            str(pkg.src)
+            if ctx.engine_name == "native"
+            else f"/tmp/pkgsrc/{pkg.src.name}"
+        )
 
     cwd = Path("/tmp")
     if pkg.src is not None and pkg.src.is_dir():
         if ctx.engine_name == "native":
             cwd = pkg.src
         else:
-            volumes.append((pkg.src, "/tmp/pkgsrc", "rw"))
-            cwd = Path("/tmp/pkgsrc")
+            volumes.append((pkg.src, f"/tmp/pkgsrc/{pkg.src.name}", "rw"))
+            cwd = Path("/tmp/pkgsrc") / pkg.src.name
     elif pkg.src is not None and ctx.engine_name != "native":
-        volumes.append((pkg.src, "/tmp/pkgsrc", "ro"))
+        volumes.append((pkg.src, f"/tmp/pkgsrc/{pkg.src.name}", "ro"))
 
     volumes.append((pkg.out, pkg.final_out, "rw"))
 
