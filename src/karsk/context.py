@@ -1,5 +1,6 @@
 from __future__ import annotations
 from pathlib import Path
+import sys
 from typing import IO, Any, Self
 
 from asyncio.subprocess import Process
@@ -26,6 +27,11 @@ class Context:
         )
         self.engine: Engine = get_engine(engine)
         self.engine_name: EngineName | None = engine
+
+    @property
+    def can_debug(self) -> bool:
+        """Returns True is it's possible to enter an interactive shell for debugging purposes"""
+        return sys.stdin.isatty()
 
     @property
     def destination(self) -> Path:

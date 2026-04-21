@@ -110,7 +110,7 @@ async def _async_build(
     buildlog: io.TextIOWrapper,
     volumes: list[VolumeBind],
     cwd: Path,
-) -> None:
+) -> bool:
     tmpfile = NamedTemporaryFile(mode="w", prefix="karsk-builder", delete=False)
     tmpfile.writelines(
         [
@@ -135,16 +135,38 @@ async def _async_build(
         stdin=DEVNULL,
         stdout=PIPE,
         stderr=PIPE,
-        terminal=True,
     )
 
-    await asyncio.gather(
+    returncode, _, _ = await asyncio.gather(
         proc.wait(),
         redirect_output(pkg.config.name, proc.stdout, sys.stdout, buildlog),
         redirect_output(pkg.config.name, proc.stderr, sys.stderr, buildlog),
     )
 
-    assert proc.returncode == 0
+    if returncode == 0:
+        return True
+
+    if ctx.can_debug:
+        console.log(
+            f"Failure during building of {pkg.fullname} (Returncode: {returncode})"
+        )
+        console.log("Entering interactive environment")
+        console.log("$src: source for this package")
+        console.log("$out: output path")
+        for p in pkg.depends:
+            console.log(f"${p.config.name} - output of dependency {p.fullname}")
+        proc = await ctx.engine(
+            pkg.build_image,
+            "bash",
+            env=env,
+            cwd=cwd,
+            volumes=volumes,
+            terminal=True,
+        )
+
+        _ = await proc.wait()
+
+    return False
 
 
 async def _build(ctx: Context, pkg: Package, tmp: str) -> None:
@@ -199,9 +221,7 @@ async def _build(ctx: Context, pkg: Package, tmp: str) -> None:
         print(pkg.config.model_dump_json(), file=buildlog)
         print("------ BUILD  LOG ------", file=buildlog)
 
-        try:
-            await _async_build(ctx, pkg, env, buildlog, volumes, cwd)
-        except BaseException as exc:
+        if not await _async_build(ctx, pkg, env, buildlog, volumes, cwd):
             for i in range(1000):
                 fail_path = pkg.storepath / f"fail-{pkg.fullname}-{i}"
                 if not fail_path.exists():
@@ -211,7 +231,7 @@ async def _build(ctx: Context, pkg: Package, tmp: str) -> None:
 
             _ = pkg.out.rename(fail_path)
             sys.exit(
-                f"Building {pkg.fullname} failed with exception {exc}. See failed build at: {fail_path}"
+                f"Building {pkg.fullname} failed. Inspect the build at: {fail_path}"
             )
 
 

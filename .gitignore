@@ -24,7 +24,7 @@ devenv.local.nix
 .fleet/
 
 # Output from Karsk
-output/
+staging/
 venv
 
 # MkDocs
