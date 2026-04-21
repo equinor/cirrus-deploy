@@ -6,6 +6,7 @@ from karsk.package import Package
 
 class Paths:
     def __init__(self, base: Path, *, is_staging: bool = False) -> None:
+        base = base.absolute()
         self._base: Path = base
         self._is_staging: bool = is_staging
 

@@ -1,34 +1,34 @@
 from __future__ import annotations
-import os
 from pathlib import Path
 import sys
 import click
 
+from karsk.commands._common import argument_config_file, option_engine, option_staging
 from karsk.context import Context
+from karsk.engine import EngineName
 
 
-@click.command("test", help="Run tests in ./deploy_tests using pytest")
-@click.argument(
-    "config-file",
-    type=Path,
-)
+@click.command("test", help="Run tests in ./karsk_tests using pytest")
+@argument_config_file
+@option_staging
+@option_engine
 @click.argument("args", nargs=-1)
-def subcommand_test(config_file: Path, args: tuple[str, ...]) -> None:
+def subcommand_test(
+    config_file: Path,
+    staging: Path,
+    engine: EngineName | None,
+    args: tuple[str, ...],
+) -> None:
     import pytest
+    import karsk.testing
 
-    ctx = Context.from_config_file(config_file, staging=Path("output"))
+    ctx = Context.from_config_file(config_file, staging=staging)
+    if ctx.config.tests is None:
+        sys.exit(
+            f"Config file '{config_file}' doesn't have 'tests' field pointing to a directory with tests"
+        )
 
-    testpath = config_file.parent / "deploy_tests"
-    if not testpath.is_dir():
-        sys.exit(f"Test directory '{testpath}' doesn't exist or is not a directory")
+    ctx.ensure_built()
 
-    newpath = ":".join(
-        str(ctx.staging_paths.out(p) / "bin") for p in ctx.plist.packages.values()
-    )
-    os.environ["PATH"] = f"{newpath}:{os.environ['PATH']}"
-
-    for pkg in ctx.plist.packages.values():
-        os.environ[f"{pkg.config.name}_version"] = pkg.config.version
-
-    print(f"{os.environ['PATH']=}")
-    sys.exit(pytest.main([str(testpath), *args]))
+    karsk.testing._CONTEXT = ctx
+    sys.exit(pytest.main([str(ctx.config.tests), *args], plugins=["karsk.testing"]))
