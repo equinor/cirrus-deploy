@@ -52,18 +52,18 @@ async def test_install_copies_to_destination(tmp_path, base_config):
     install_all(install_ctx)
 
     assert destination.exists()
-    assert (destination / ".store").is_dir()
-    assert (destination / "bin" / "run").exists()
-    assert (destination / "latest").is_symlink()
-    assert (destination / "stable").is_symlink()
+    assert (destination / "store").is_dir()
+    assert (destination / "bin/run").exists()
+    assert (destination / "versions/latest").is_symlink()
+    assert (destination / "versions/stable").is_symlink()
 
-    wrapper = destination / "bin" / "run"
+    wrapper = destination / "bin/run"
     result = subprocess.run([str(wrapper)], capture_output=True, text=True)
     assert result.returncode == 0
     assert "hello" in result.stdout
 
 
-async def test_install_idempotent(tmp_path, base_config):
+async def test_install_idempotent(tmp_path: Path, base_config):
     build_dir = tmp_path / "build"
     destination = tmp_path / "destination"
     base_config["destination"] = str(build_dir)
@@ -87,11 +87,11 @@ async def test_install_idempotent(tmp_path, base_config):
     )
 
     install_all(install_ctx)
-    assert (destination / "1.0.0-1").is_dir()
+    assert (destination / "versions/1.0.0-1").is_dir()
 
     install_all(install_ctx)
-    assert (destination / "1.0.0-1").is_dir()
-    assert not (destination / "1.0.0-2").exists()
+    assert (destination / "versions/1.0.0-1").is_dir()
+    assert not (destination / "versions/1.0.0-2").exists()
 
 
 async def test_install_hello_world_example(tmp_path, monkeypatch):

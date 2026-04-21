@@ -32,7 +32,7 @@ async def test_hello_world_example(tmp_path, monkeypatch):
     wrapper = tmp_path / "bin" / "run"
     assert wrapper.exists()
     proc = await ctx.run(
-        ctx["hello"].final_out / "bin/binary.sh", stdout=PIPE, stderr=PIPE
+        ctx.out("hello", staging=False) / "bin/binary.sh", stdout=PIPE, stderr=PIPE
     )
     stdout, stderr = await proc.communicate()
     assert proc.returncode == 0

@@ -58,15 +58,13 @@ async def _deploy_config(config, tmp_path):
 
 
 async def test_successful_sync(tmp_path, base_config):
-    builder = await _deploy_config(base_config, tmp_path)
+    ctx = await _deploy_config(base_config, tmp_path)
 
-    pkg = builder.packages["A"]
-    installed_file_path = pkg.out / "bin/a_file"
+    installed_file_path = ctx.out("A") / "bin/a_file"
     assert installed_file_path.exists()
 
     await sync_all(
-        config=base_config,
-        staging=tmp_path,
+        ctx,
         no_async=False,
         dry_run=False,
     )
@@ -76,12 +74,11 @@ async def test_successful_sync(tmp_path, base_config):
 
 async def test_failing_sync(tmp_path, base_config, monkeypatch):
     """Try to sync with a broken RSH to simulate unreachable host"""
-    await _deploy_config(base_config, tmp_path)
+    ctx = await _deploy_config(base_config, tmp_path)
     monkeypatch.setattr(Sync, "RSH", ["sh", "-c", "exit 1"])
     with pytest.raises(CalledProcessError):
         await sync_all(
-            config=base_config,
-            staging=tmp_path,
+            ctx,
             no_async=False,
             dry_run=False,
         )
@@ -94,20 +91,18 @@ async def test_sync_with_non_local_prefix(tmp_path, base_config):
 
     ctx = Context(base_config, staging=tmp_path, engine="native")
 
-    pkg = ctx.packages["A"]
-    installed_file_path = pkg.out / "bin/a_file"
+    installed_file_path = ctx.out("A") / "bin/a_file"
     installed_file_path.parent.mkdir(parents=True)
 
     installed_file_path.write_text("test")
 
-    _build_envs(ctx)
+    _build_envs(ctx, ctx.staging_paths)
 
     await sync_all(
-        config=base_config,
-        staging=tmp_path,
+        ctx,
         no_async=False,
         dry_run=False,
     )
 
     assert installed_file_path.exists()
-    assert os.path.islink(tmp_path / "latest")
+    assert (tmp_path / "versions/latest").is_symlink()

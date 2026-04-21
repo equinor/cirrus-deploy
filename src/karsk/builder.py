@@ -17,6 +17,7 @@ from karsk.engine import VolumeBind
 from karsk.fetchers import fetch_single
 from karsk.links import make_links
 from karsk.package import Package
+from karsk.paths import Paths
 from karsk.utils import redirect_output
 
 
@@ -47,7 +48,7 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
-BASE_DIR="$(dirname "$(dirname "$(readlink -f "${{BASH_SOURCE[0]}}")")")"
+BASE_DIR="$(dirname "$(dirname "$(readlink -f "${{BASH_SOURCE[0]}}")")")/versions"
 
 if [ "$PRINT_VERSIONS" = true ]; then
     NON_NUMERIC=()
@@ -88,8 +89,7 @@ exec "$ENTRY_POINT" "${{FORWARD_ARGS[@]}}"
 """
 
 
-def _create_wrapper_script(ctx: Context, base: Path) -> None:
-    bin_dir = base / "bin"
+def _create_wrapper_script(ctx: Context, bin_dir: Path) -> None:
     bin_dir.mkdir(parents=True, exist_ok=True)
 
     wrapper_script = bin_dir / "run"
@@ -170,55 +170,57 @@ async def _async_build(
 
 
 async def _build(ctx: Context, pkg: Package, tmp: str) -> None:
+    out = ctx.staging_paths.out(pkg)
+    src = ctx.staging_paths.src(pkg)
     try:
-        pkg.out.mkdir()
+        out.mkdir()
     except FileExistsError:
         print(
-            f"Ignoring {pkg.fullname}: Already built at {pkg.out}",
+            f"Ignoring {pkg.fullname}: Already built at {out}",
             file=sys.stderr,
         )
         return
 
     print(f"Building {pkg.fullname}...")
     try:
-        await fetch_single(pkg)
+        await fetch_single(ctx, pkg)
     except BaseException:
-        if pkg.src is not None:
-            shutil.rmtree(pkg.src)
-        shutil.rmtree(pkg.out)
+        if src is not None:
+            shutil.rmtree(src)
+        shutil.rmtree(out)
         raise
 
     env = {
-        **{x.config.name: str(x.final_out) for x in pkg.depends},
+        **{x.config.name: str(ctx.target_paths.out(x)) for x in pkg.depends},
         "tmp": tmp,
-        "out": str(pkg.final_out),
+        "out": str(ctx.target_paths.out(pkg)),
         "CFLAGS": "-O3",
         "CXXFLAGS": "-O3",
         "FOPTFLAGS": "-O3",
         "MAKEFLAGS": "-j10",
     }
 
-    volumes: list[VolumeBind] = [(x.out, x.final_out, "ro") for x in pkg.depends]
-    if pkg.src is not None:
+    volumes: list[VolumeBind] = [
+        (ctx.staging_paths.out(x), ctx.target_paths.out(x), "ro") for x in pkg.depends
+    ]
+    if src is not None:
         env["src"] = (
-            str(pkg.src)
-            if ctx.engine_name == "native"
-            else f"/tmp/pkgsrc/{pkg.src.name}"
+            str(src) if ctx.engine_name == "native" else f"/tmp/pkgsrc/{src.name}"
         )
 
     cwd = Path("/tmp")
-    if pkg.src is not None and pkg.src.is_dir():
+    if src is not None and src.is_dir():
         if ctx.engine_name == "native":
-            cwd = pkg.src
+            cwd = src
         else:
-            volumes.append((pkg.src, f"/tmp/pkgsrc/{pkg.src.name}", "rw"))
-            cwd = Path("/tmp/pkgsrc") / pkg.src.name
-    elif pkg.src is not None and ctx.engine_name != "native":
-        volumes.append((pkg.src, f"/tmp/pkgsrc/{pkg.src.name}", "ro"))
+            volumes.append((src, f"/tmp/pkgsrc/{src.name}", "rw"))
+            cwd = Path("/tmp/pkgsrc") / src.name
+    elif src is not None and ctx.engine_name != "native":
+        volumes.append((src, f"/tmp/pkgsrc/{src.name}", "ro"))
 
-    volumes.append((pkg.out, pkg.final_out, "rw"))
+    volumes.append((out, ctx.target_paths.out(pkg), "rw"))
 
-    with open(pkg.out / "build.log", "w") as buildlog:
+    with open(out / "build.log", "w") as buildlog:
         print("Built with https://github.com/equinor/cirrus-deploy", file=buildlog)
         print(f"Build date: {datetime.now()}", file=buildlog)
         print("----- BUILD CONFIG -----", file=buildlog)
@@ -227,13 +229,13 @@ async def _build(ctx: Context, pkg: Package, tmp: str) -> None:
 
         if not await _async_build(ctx, pkg, env, buildlog, volumes, cwd):
             for i in range(1000):
-                fail_path = pkg.storepath / f"fail-{pkg.fullname}-{i}"
+                fail_path = ctx.staging_paths.store / f"fail-{pkg.fullname}-{i}"
                 if not fail_path.exists():
                     break
             else:
-                sys.exit(f"Could not move failed build at {pkg.out}")
+                sys.exit(f"Could not move failed build at {out}")
 
-            _ = pkg.out.rename(fail_path)
+            _ = out.rename(fail_path)
             sys.exit(
                 f"Building {pkg.fullname} failed. Inspect the build at: {fail_path}"
             )
@@ -250,33 +252,26 @@ async def _build_packages(ctx: Context, stop_after: Package | None = None) -> No
 
 def _build_envs(
     ctx: Context,
-    *,
-    base: Path | None = None,
-    use_final_out: bool = False,
+    paths: Paths,
 ) -> None:
-    if base is None:
-        base = ctx.staging
-
     pkg = ctx.plist.packages[ctx.config.main_package]
-    path = _get_build_path(base, pkg)
-    if path is not None:
-        _build_env_for_package(path, pkg, use_final_out=use_final_out)
+    env_path = _get_versions_path(paths, pkg)
+    if env_path is not None:
+        _build_env_for_package(paths, env_path, pkg)
 
     default_links: dict[str, str] = {"latest": "^", "stable": "latest"}
     make_links(
         links={**default_links, **ctx.config.links},
-        destination=base,
+        destination=paths.versions,
     )
-    _create_wrapper_script(ctx, base)
+    _create_wrapper_script(ctx, paths.bin)
 
 
-def _build_env_for_package(
-    base: Path, finalpkg: Package, *, use_final_out: bool = False
-) -> None:
-    for pkg in chain([finalpkg], finalpkg.depends):
-        out = (pkg.final_out if use_final_out else pkg.out).resolve()
-        for srcdir, subdirs, files in os.walk(out):
-            dstdir = base / srcdir[len(str(out)) + 1 :]
+def _build_env_for_package(paths: Paths, env_path: Path, main_package: Package) -> None:
+    for pkg in chain([main_package], main_package.depends):
+        out = paths.out(pkg).resolve()
+        for srcdir, _, files in os.walk(out):
+            dstdir = env_path / Path(srcdir).relative_to(out)
             dstdir.mkdir(parents=True, exist_ok=True)
             for f in files:
                 with suppress(FileExistsError):
@@ -284,12 +279,12 @@ def _build_env_for_package(
                     os.symlink(target, os.path.join(dstdir, f))
 
     # Write a manifest file
-    (base / "manifest").write_text(finalpkg.manifest)
+    _ = (env_path / "manifest").write_text(main_package.manifest)
 
 
-def _get_build_path(base: Path, finalpkg: Package) -> Path | None:
+def _get_versions_path(paths: Paths, finalpkg: Package) -> Path | None:
     for i in range(1, 1000):
-        path = base / f"{finalpkg.config.version}-{i}"
+        path = paths.versions / f"{finalpkg.config.version}-{i}"
         if not path.is_dir():
             return path
 
@@ -312,23 +307,23 @@ async def build_all(ctx: Context, stop_after: Package | None = None) -> None:
     if stop_after is not None:
         return
 
-    _build_envs(ctx)
+    _build_envs(ctx, ctx.staging_paths)
 
 
 def install_all(ctx: Context) -> None:
-    destination = ctx.destination
-    destination.mkdir(parents=True, exist_ok=True)
-
     for pkg in ctx.plist.packages.values():
-        if not pkg.out.exists():
+        from_path = ctx.staging_paths.out(pkg)
+        to_path = ctx.target_paths.out(pkg)
+
+        if not from_path.exists():
             sys.exit(
                 f"Package {pkg.fullname} has not been built. Run 'karsk build' first."
             )
-        if pkg.final_out.exists():
+        if to_path.exists():
             print(f"Already installed: {pkg.fullname}", file=sys.stderr)
             continue
-        pkg.final_out.parent.mkdir(parents=True, exist_ok=True)
-        shutil.copytree(pkg.out, pkg.final_out)
-        print(f"Installed {pkg.fullname} to {pkg.final_out}")
+        to_path.parent.mkdir(parents=True, exist_ok=True)
+        _ = shutil.copytree(from_path, to_path)
+        print(f"Installed {pkg.fullname} to {to_path}")
 
-    _build_envs(ctx, base=destination, use_final_out=True)
+    _build_envs(ctx, ctx.target_paths)
