@@ -78,10 +78,35 @@ class Context:
         config_ = Config.model_validate(data, context={"cwd": cwd})
         return cls(config_, staging=staging, engine=engine)
 
+    def ensure_built(self, packages: list[str] | None = None) -> None:
+        """Ensure that packages are present in staging. If 'packages' arg is
+        specified, only those packages will be checked. Otherwise every
+        package is expected to exist."""
+
+        if packages is None:
+            packages = sorted(self.packages.keys())
+
+        missing: list[str] = []
+        for pname in packages:
+            if (pkg := self.plist.packages.get(pname)) is None:
+                raise ValueError(f"No package {pname} defined")
+
+            if not self.staging_paths.out(pkg).is_dir():
+                missing.append(pname)
+
+        if missing:
+            console.log(
+                f"[yellow]The following packages haven't been built:[bold] {', '.join(missing)}"
+            )
+            console.log(
+                "[yellow]Run '[bold]karsk build [CONFIG PATH][/bold]' to build all packages"
+            )
+            sys.exit(1)
+
     async def run(
         self,
-        program: str,
-        *args: str,
+        program: str | Path,
+        *args: str | Path,
         package: str | list[str] | None = None,
         volumes: list[VolumeBind] | None = None,
         build: bool = False,
@@ -115,21 +140,7 @@ class Context:
             elif isinstance(package, str):
                 package = [package]
 
-            missing: list[str] = []
-            for pname in package:
-                if (pkg := self.plist.packages.get(pname)) is None:
-                    raise ValueError(f"No package {pname} defined")
-
-                if not self.staging_paths.out(pkg).is_dir():
-                    missing.append(pname)
-
-            if missing:
-                console.log(
-                    f"[yellow]The following packages haven't been built:[bold] {', '.join(missing)}"
-                )
-                console.log(
-                    "[yellow]Run '[bold]karsk build [CONFIG PATH][/bold]' to build all packages"
-                )
+            self.ensure_built(package)
 
         return await self.engine(
             image,

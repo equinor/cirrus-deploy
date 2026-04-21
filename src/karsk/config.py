@@ -32,6 +32,10 @@ class Config(BaseModel):
         description="Path to containerfile to use for building (eg: './Containerfile')"
     )
 
+    tests: Path | None = Field(
+        None, description="Path to directory containing pytest-based tests"
+    )
+
     packages: list[PackageConfig] = Field(description="List of packages to build")
     areas: list[AreaConfig] = Field(
         default_factory=list, description="Areas to sync build artifacts to"
@@ -54,9 +58,14 @@ class Config(BaseModel):
             raise ValueError(f"{value} must be a relative path")
         return value
 
-    @field_validator("build_image", mode="before")
+    @field_validator("build_image", "tests", mode="before")
     @classmethod
-    def _resolve_paths(cls, value: str, info: pydantic.ValidationInfo) -> Path:
+    def _resolve_paths(
+        cls, value: str | None, info: pydantic.ValidationInfo
+    ) -> Path | None:
+        if value is None:
+            return None
+
         cwd = Path((info.context or {}).get("cwd", "."))
         return cwd / value
 
