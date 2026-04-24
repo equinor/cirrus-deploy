@@ -94,7 +94,7 @@ async def test_not_overwrite_user_set_links_with_default(tmp_path: Path, base_co
     latest_link = tmp_path / "versions/latest"
 
     assert str(stable_link.readlink()) == "latest"
-    assert str(latest_link.readlink()) == "1.0.0-1"
+    assert str(latest_link.readlink()) == "1.0.0+1"
     assert stable_link.resolve() == latest_link.resolve()
 
     # Now we create a new build with a new version, but we set the stable link to point to the old version
@@ -111,7 +111,7 @@ async def test_not_overwrite_user_set_links_with_default(tmp_path: Path, base_co
     assert stable_link.is_symlink()
     assert latest_link.is_symlink()
     assert str(stable_link.readlink()) == "1.0.0"
-    assert str(latest_link.readlink()) == "1.0.1-1"
+    assert str(latest_link.readlink()) == "1.0.1+1"
 
 
 async def _build_wrapper(tmp_path, base_config, version="1.0.0", preamble=""):
@@ -215,7 +215,7 @@ async def test_wrapper_print_versions(tmp_path, base_config):
     lines = result.stdout.strip().splitlines()
     expected = """stable -> latest
 something -> 1.0
-latest -> 2.0.0-1
+latest -> 2.0.0+1
 2 -> 2.0
 2.0 -> 2.0.0
 1 -> 1.1
@@ -237,7 +237,7 @@ async def test_not_overwrite_user_set_version_alias_with_default(tmp_path, base_
     )
     await build_all(ctx)
 
-    assert str((tmp_path / "versions/1.0.0").readlink()) == "1.0.0-1"
+    assert str((tmp_path / "versions/1.0.0").readlink()) == "1.0.0+1"
     assert str((tmp_path / "versions/1.0").readlink()) == "1.0.0"
     assert str((tmp_path / "versions/1").readlink()) == "1.0"
 
@@ -251,7 +251,7 @@ async def test_not_overwrite_user_set_version_alias_with_default(tmp_path, base_
     )
     await build_all(ctx)
 
-    assert str((tmp_path / "versions/1.0.0").readlink()) == "1.0.0-1"
+    assert str((tmp_path / "versions/1.0.0").readlink()) == "1.0.0+1"
     assert str((tmp_path / "versions/1.0").readlink()) == "1.0.0"
     assert str((tmp_path / "versions/1.1").readlink()) == "1.0"
     assert str((tmp_path / "versions/1").readlink()) == "1.1"
@@ -314,11 +314,11 @@ def test_install_appends_build_id_when_manifest_differs(tmp_path: Path, base_con
     """Destination is append-only: build IDs may differ from staging.
 
     Scenario:
-      1. Build v1.0.0 and install → both staging and destination get 1.0.0-1
+      1. Build v1.0.0 and install → both staging and destination get 1.0.0+1
       2. Clear staging, change the build script (producing a new hash)
-      3. Rebuild → staging gets 1.0.0-1 again (it was cleared)
-      4. Install → destination already has 1.0.0-1 with a different manifest,
-         so the new build becomes 1.0.0-2
+      3. Rebuild → staging gets 1.0.0+1 again (it was cleared)
+      4. Install → destination already has 1.0.0+1 with a different manifest,
+         so the new build becomes 1.0.0+2
 
     This guarantees destination never overwrites existing builds. Build IDs
     are allowed to diverge between staging and destination, but must remain
@@ -345,8 +345,8 @@ def test_install_appends_build_id_when_manifest_differs(tmp_path: Path, base_con
     _build_envs(ctx1, ctx1.staging_paths)
     install_all(ctx1)
 
-    assert (staging / "versions/1.0.0-1").is_dir()
-    assert (destination / "versions/1.0.0-1").is_dir()
+    assert (staging / "versions/1.0.0+1").is_dir()
+    assert (destination / "versions/1.0.0+1").is_dir()
 
     shutil.rmtree(staging)
 
@@ -364,13 +364,13 @@ def test_install_appends_build_id_when_manifest_differs(tmp_path: Path, base_con
 
     _build_envs(ctx2, ctx1.staging_paths)
 
-    assert (staging / "versions/1.0.0-1").is_dir()
+    assert (staging / "versions/1.0.0+1").is_dir()
 
     install_all(ctx2)
 
-    assert (destination / "versions/1.0.0-1").is_dir()
-    assert (destination / "versions/1.0.0-2").is_dir()
+    assert (destination / "versions/1.0.0+1").is_dir()
+    assert (destination / "versions/1.0.0+2").is_dir()
 
-    manifest1 = (destination / "versions/1.0.0-1" / "manifest").read_text()
-    manifest2 = (destination / "versions/1.0.0-2" / "manifest").read_text()
+    manifest1 = (destination / "versions/1.0.0+1" / "manifest").read_text()
+    manifest2 = (destination / "versions/1.0.0+2" / "manifest").read_text()
     assert manifest1 != manifest2

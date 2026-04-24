@@ -87,11 +87,11 @@ async def test_install_idempotent(tmp_path: Path, base_config):
     )
 
     install_all(install_ctx)
-    assert (destination / "versions/1.0.0-1").is_dir()
+    assert (destination / "versions/1.0.0+1").is_dir()
 
     install_all(install_ctx)
-    assert (destination / "versions/1.0.0-1").is_dir()
-    assert not (destination / "versions/1.0.0-2").exists()
+    assert (destination / "versions/1.0.0+1").is_dir()
+    assert not (destination / "versions/1.0.0+2").exists()
 
 
 async def test_install_hello_world_example(tmp_path, monkeypatch):

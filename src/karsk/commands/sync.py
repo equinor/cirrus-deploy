@@ -78,7 +78,7 @@ class Sync:
             context="store",
         )
 
-        # 3. Sync environments (eg. versions/1.0.2-2)
+        # 3. Sync environments (eg. versions/1.0.2+2)
         await self._rsync(
             area,
             self._env_paths,

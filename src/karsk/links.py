@@ -7,6 +7,17 @@ from pathlib import Path
 from semver import Version
 
 
+def _version_key(version: Version) -> tuple[int, int, int, str, int]:
+    """Sortable key that includes build metadata, which semver ignores by default."""
+    return (
+        version.major,
+        version.minor,
+        version.patch,
+        version.prerelease or "",
+        int(version.build) if version.build else 0,
+    )
+
+
 def get_latest(basepath: Path) -> str:
     latest: tuple[Version, str] | None = None
 
@@ -23,7 +34,7 @@ def get_latest(basepath: Path) -> str:
         except ValueError:
             continue
 
-        if latest is None or version > latest[0]:
+        if latest is None or _version_key(version) > _version_key(latest[0]):
             latest = (version, name)
 
     assert latest is not None
@@ -81,8 +92,8 @@ def _get_auto_version_aliases(destination: Path) -> dict[str, str]:
             version = Version.parse(name)
         except ValueError:
             continue
-        pre = int(version.prerelease) if version.prerelease else 0
-        entries[(version.major, version.minor, version.patch, pre)] = name
+        build = int(version.build) if version.build else 0
+        entries[(version.major, version.minor, version.patch, build)] = name
 
     aliases: dict[str, str] = {}
     _reduce_aliases(entries, aliases)

@@ -284,7 +284,7 @@ def _build_env_for_package(paths: Paths, env_path: Path, main_package: Package) 
 
 def _get_versions_path(paths: Paths, finalpkg: Package) -> Path | None:
     for i in range(1, 1000):
-        path = paths.versions / f"{finalpkg.config.version}-{i}"
+        path = paths.versions / f"{finalpkg.config.version}+{i}"
         if not path.is_dir():
             return path
 
