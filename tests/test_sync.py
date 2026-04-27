@@ -3,7 +3,7 @@ from subprocess import CalledProcessError
 from karsk.builder import build_all
 import pytest
 
-from karsk.config import Config
+from karsk.config import AreaConfig, Config
 from karsk.commands.sync import Sync, sync_all
 from karsk.context import Context
 
@@ -43,11 +43,15 @@ def base_config():
                 "build": BUILD_SCRIPT,
             },
         ],
-        "areas": [{"name": "destination", "host": "example.com"}],
     }
 
     config = Config.model_validate(config, context={"cwd": os.path.dirname(__file__)})
     return config
+
+
+@pytest.fixture
+def areas():
+    return [AreaConfig(name="destination", host="example.com")]
 
 
 async def _deploy_config(config, tmp_path):
@@ -57,7 +61,7 @@ async def _deploy_config(config, tmp_path):
     return context
 
 
-async def test_successful_sync(tmp_path, base_config):
+async def test_successful_sync(tmp_path, base_config, areas):
     ctx = await _deploy_config(base_config, tmp_path)
 
     installed_file_path = ctx.out("A") / "bin/a_file"
@@ -65,6 +69,7 @@ async def test_successful_sync(tmp_path, base_config):
 
     await sync_all(
         ctx,
+        areas=areas,
         no_async=False,
         dry_run=False,
     )
@@ -72,19 +77,20 @@ async def test_successful_sync(tmp_path, base_config):
     assert installed_file_path.exists()
 
 
-async def test_failing_sync(tmp_path, base_config, monkeypatch):
+async def test_failing_sync(tmp_path, base_config, areas, monkeypatch):
     """Try to sync with a broken RSH to simulate unreachable host"""
     ctx = await _deploy_config(base_config, tmp_path)
     monkeypatch.setattr(Sync, "RSH", ["sh", "-c", "exit 1"])
     with pytest.raises(CalledProcessError):
         await sync_all(
             ctx,
+            areas=areas,
             no_async=False,
             dry_run=False,
         )
 
 
-async def test_sync_with_non_local_prefix(tmp_path, base_config):
+async def test_sync_with_non_local_prefix(tmp_path, base_config, areas):
     from karsk.builder import _build_envs
 
     base_config.destination = tmp_path
@@ -100,6 +106,7 @@ async def test_sync_with_non_local_prefix(tmp_path, base_config):
 
     await sync_all(
         ctx,
+        areas=areas,
         no_async=False,
         dry_run=False,
     )

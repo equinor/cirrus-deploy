@@ -91,11 +91,27 @@ def test_build_accepts_args(mock_build, runner, config_file):
     mock_build.assert_called_once()
 
 
+@pytest.fixture
+def areas_file(tmp_path):
+    path = tmp_path / "areas.yaml"
+    path.write_text(
+        yaml.dump({"areas": [{"name": "destination", "host": "example.com"}]})
+    )
+    return path
+
+
 @patch("karsk.commands.sync.sync_all", new_callable=AsyncMock)
-def test_sync_accepts_args(mock_sync, runner, config_file):
+def test_sync_accepts_args(mock_sync, runner, config_file, areas_file):
     result = runner.invoke(
         cli,
-        ["sync", str(config_file), "--staging", str(config_file.parent), "--dry-run"],
+        [
+            "sync",
+            str(config_file),
+            str(areas_file),
+            "--staging",
+            str(config_file.parent),
+            "--dry-run",
+        ],
     )
     assert result.exit_code == 0, result.output
     mock_sync.assert_called_once()

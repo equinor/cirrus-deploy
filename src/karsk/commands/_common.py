@@ -7,6 +7,7 @@ from karsk.engine import CpuArchNameNative, EngineNameNative
 
 
 argument_config_file = click.argument("config-file", type=Path)
+argument_areas_file = click.argument("areas-file", type=Path)
 option_arch = click.option(
     "--arch",
     type=click.Choice(get_args(CpuArchNameNative)),
