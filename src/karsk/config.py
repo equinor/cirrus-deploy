@@ -37,9 +37,6 @@ class Config(BaseModel):
     )
 
     packages: list[PackageConfig] = Field(description="List of packages to build")
-    areas: list[AreaConfig] = Field(
-        default_factory=list, description="Areas to sync build artifacts to"
-    )
     links: dict[str, str] = Field(
         default_factory=dict, description="Symbolic links setup"
     )
@@ -128,8 +125,6 @@ class FileConfig(BaseModel):
 
 
 class AreaConfig(BaseModel):
-    """TODO: AreaConfig"""
-
     name: str = Field(description="Display name")
     host: str = Field(description="Hostname or IP-address")
 
@@ -139,3 +134,9 @@ def load_config(path: Path) -> Config:
         return Config.model_validate(
             yaml.safe_load(f.read()), context={"cwd": path.absolute().parent}
         )
+
+
+def load_areas(path: Path) -> list[AreaConfig]:
+    with open(path) as f:
+        data = yaml.safe_load(f.read())
+    return [AreaConfig.model_validate(item) for item in data["areas"]]

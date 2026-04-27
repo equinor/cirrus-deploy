@@ -10,8 +10,12 @@ from pathlib import Path
 
 import click
 
-from karsk.commands._common import argument_config_file, option_staging
-from karsk.config import AreaConfig
+from karsk.commands._common import (
+    argument_areas_file,
+    argument_config_file,
+    option_staging,
+)
+from karsk.config import AreaConfig, load_areas
 from karsk.context import Context
 from karsk.paths import Paths
 from karsk.utils import redirect_output
@@ -169,28 +173,30 @@ class Sync:
 
 async def sync_all(
     ctx: Context,
+    areas: list[AreaConfig],
     no_async: bool,
     dry_run: bool,
 ) -> None:
     syncer = Sync(ctx, dry_run=dry_run)
 
     if no_async:
-        for area in ctx.config.areas:
+        for area in areas:
             await syncer.sync_to(area)
         return
 
     results = await asyncio.gather(
-        *(syncer.sync_to(area) for area in ctx.config.areas), return_exceptions=True
+        *(syncer.sync_to(area) for area in areas), return_exceptions=True
     )
     for index, result in enumerate(results):
         if not isinstance(result, BaseException):
             continue
-        print(f"During syncing to {ctx.config.areas[index].name}:")
+        print(f"During syncing to {areas[index].name}:")
         raise result
 
 
 @click.command("sync", help="Synchronise all locations")
 @argument_config_file
+@argument_areas_file
 @option_staging
 @click.option(
     "--no-async",
@@ -204,12 +210,14 @@ async def sync_all(
     default=False,
 )
 def subcommand_sync(
-    config_file: Path, staging: Path, no_async: bool, dry_run: bool
+    config_file: Path, areas_file: Path, staging: Path, no_async: bool, dry_run: bool
 ) -> None:
     ctx = Context.from_config_file(config_file, staging=staging, engine="native")
+    areas = load_areas(areas_file)
     asyncio.run(
         sync_all(
             ctx,
+            areas=areas,
             no_async=no_async,
             dry_run=dry_run,
         )
