@@ -1,0 +1,29 @@
+destination: /opt/karsk/linking
+main-package: app
+entrypoint: bin/app
+build-image: Containerfile
+
+packages:
+  - name: mathlib
+    version: 1.0.0
+    src:
+      type: file
+      path: mathlib.c
+    build: |
+      mkdir -p $out/lib $out/include
+      gcc -shared -fPIC -o $out/lib/libmath.so $src
+      cat > $out/include/mathlib.h << 'EOF'
+      int add(int a, int b);
+      int multiply(int a, int b);
+      EOF
+
+  - name: app
+    version: 1.0.0
+    depends:
+      - mathlib
+    src:
+      type: file
+      path: app.c
+    build: |
+      mkdir -p $out/bin
+      gcc -I$mathlib/include -L$mathlib/lib -Wl,-rpath,$mathlib/lib -o $out/bin/app $src -lmath
