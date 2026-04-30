@@ -16,7 +16,7 @@ from karsk.engine import EngineName
 from karsk.package import Package
 
 
-@click.command("build", help="Build Cirrus and dependencies")
+@click.command("build", help="Build selected package and dependencies")
 @argument_config_file
 @option_staging
 @option_engine

@@ -221,7 +221,7 @@ async def _build(ctx: Context, pkg: Package, tmp: str) -> None:
     volumes.append((out, ctx.target_paths.out(pkg), "rw"))
 
     with open(out / "build.log", "w") as buildlog:
-        print("Built with https://github.com/equinor/cirrus-deploy", file=buildlog)
+        print("Built with https://github.com/equinor/karsk", file=buildlog)
         print(f"Build date: {datetime.now()}", file=buildlog)
         print("----- BUILD CONFIG -----", file=buildlog)
         print(pkg.config.model_dump_json(), file=buildlog)
