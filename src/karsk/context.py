@@ -5,7 +5,13 @@ from typing import IO, Any, Self
 
 from asyncio.subprocess import Process
 from karsk.config import Config, load_config
-from karsk.engine import Engine, EngineName, VolumeBind, get_engine
+from karsk.engine import (
+    CpuArchNameNative,
+    Engine,
+    EngineNameNative,
+    VolumeBind,
+    get_engine,
+)
 from karsk.package import Package
 from karsk.package_list import PackageList
 from karsk.console import console
@@ -18,7 +24,8 @@ class Context:
         config: Config,
         *,
         staging: Path,
-        engine: EngineName | None = None,
+        engine: EngineNameNative | None = None,
+        arch: CpuArchNameNative = "native",
     ) -> None:
         self.config: Config = config
         self.staging_paths: Paths = Paths(staging, is_staging=True)
@@ -29,8 +36,8 @@ class Context:
             self.target_paths,
             check_existence=False,
         )
-        self.engine: Engine = get_engine(engine)
-        self.engine_name: EngineName | None = engine
+        self.engine: Engine = get_engine(engine, arch)
+        self.engine_name: EngineNameNative | None = engine
 
     @property
     def destination(self) -> Path:
@@ -61,10 +68,11 @@ class Context:
         config: Path,
         *,
         staging: Path,
-        engine: EngineName | None = None,
+        engine: EngineNameNative | None = None,
+        arch: CpuArchNameNative = "native",
     ) -> Self:
         config_ = load_config(config)
-        return cls(config_, staging=staging, engine=engine)
+        return cls(config_, staging=staging, engine=engine, arch=arch)
 
     @classmethod
     def from_config(
@@ -73,10 +81,11 @@ class Context:
         *,
         cwd: Path,
         staging: Path,
-        engine: EngineName | None = None,
+        engine: EngineNameNative | None = None,
+        arch: CpuArchNameNative = "native",
     ) -> Self:
         config_ = Config.model_validate(data, context={"cwd": cwd})
-        return cls(config_, staging=staging, engine=engine)
+        return cls(config_, staging=staging, engine=engine, arch=arch)
 
     def ensure_built(self, packages: list[str] | None = None) -> None:
         """Ensure that packages are present in staging. If 'packages' arg is

@@ -4,14 +4,24 @@ from functools import partial
 import hashlib
 import os
 from pathlib import Path
+from platform import machine
+import shlex
 import shutil
 import subprocess
+import sys
 from typing import Literal, Protocol, TypeAlias
 from typing import IO, Any
 
+from karsk.console import console
+
 
 VolumeBind: TypeAlias = tuple[str | Path, str | Path, Literal["ro", "rw"]]
-EngineName = Literal["docker", "podman", "native"]
+
+EngineName = Literal["docker", "podman"]
+CpuArchName = Literal["arm64", "amd64"]
+
+EngineNameNative = Literal[EngineName, "native"]
+CpuArchNameNative = Literal[CpuArchName, "native", "target"]
 
 
 class Engine(Protocol):
@@ -40,9 +50,13 @@ async def _engine_has_image(
     return await proc.wait() == os.EX_OK
 
 
-async def _engine_ensure_image(which: Literal["docker", "podman"], image: Path) -> str:
+async def _engine_ensure_image(
+    which: EngineName,
+    arch: CpuArchName,
+    image: Path,
+) -> str:
     hash = hashlib.sha1(image.read_bytes()).hexdigest()[:8]
-    image_name = f"karsk-env-{hash}"
+    image_name = f"karsk-env-{hash}-{arch}"
 
     if await _engine_has_image(which, image_name):
         return image_name
@@ -51,7 +65,7 @@ async def _engine_ensure_image(which: Literal["docker", "podman"], image: Path) 
         which,
         "build",
         "--platform",
-        "linux/amd64",
+        f"linux/{arch}",
         "-f",
         image,
         "-t",
@@ -65,7 +79,8 @@ async def _engine_ensure_image(which: Literal["docker", "podman"], image: Path) 
 
 
 async def _engine(
-    which: Literal["docker", "podman"],
+    which: EngineName,
+    arch: CpuArchName,
     image: Path,
     program: str | Path,
     *args: str | Path,
@@ -81,7 +96,7 @@ async def _engine(
     assert not (stdin and input), "Arguments 'stdin' and 'input' are mutually exclusive"
 
     volumes = volumes or []
-    image_id = await _engine_ensure_image(which, image)
+    image_id = await _engine_ensure_image(which, arch, image)
 
     if input is not None:
         stdin = PIPE
@@ -103,9 +118,16 @@ async def _engine(
     for src, dst, kind in volumes:
         volume_args.append(f"-v{src}:{dst}:{kind}")
 
+    if arch != "amd64":
+        console.log(
+            f"[orange]Warning. Using CPU Architecture '{arch}' instead of target 'amd64'"
+        )
+    console.log(f"Running {str(program)} {shlex.join(map(str, args))}")
     proc = await asyncio.create_subprocess_exec(
         which,
         "run",
+        "--platform",
+        f"linux/{arch}",
         "--rm",
         "-i",
         *(f"-e{key}={val}" for key, val in env.items()),
@@ -191,17 +213,43 @@ def _validate_engine(which: Literal["docker", "podman"]) -> None:
         )
 
 
-def get_engine(preference: EngineName | None = None) -> Engine:
+def _normalized_cpu_arch() -> Literal["arm64", "amd64"]:
+    """CPU architectures have multiple names. This returns a 'normalised'
+    variant. Use the same terms as Docker.
+
+    """
+    match machine().lower():
+        case "arm64" | "aarch64":
+            # aarch64 is reported by Python on Linux
+            return "arm64"
+        case "amd64" | "x86_64":
+            # x86_64 is reported by Python on Linux
+            return "amd64"
+        case arch:
+            sys.exit(f"Unknown/unsupported CPU architecture '{arch}'")
+
+
+def get_engine(
+    preference: EngineNameNative | None = None, arch: CpuArchNameNative | None = None
+) -> Engine:
     if preference is None:
         preference = "podman"
+
+    arch_: CpuArchName
+    if arch is None or arch == "native":
+        arch_ = _normalized_cpu_arch()
+    elif arch == "target":
+        arch_ = "amd64"
+    else:
+        arch_ = arch
 
     match preference:
         case "podman":
             _validate_engine("podman")
-            return partial(_engine, "podman")
+            return partial(_engine, "podman", arch_)
         case "docker":
             _validate_engine("docker")
-            return partial(_engine, "docker")
+            return partial(_engine, "docker", arch_)
         case "native":
             return _native
 
