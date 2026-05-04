@@ -4,6 +4,7 @@ import click
 
 from karsk.commands.build import subcommand_build
 from karsk.commands.enter import subcommand_enter
+from karsk.commands.init import subcommand_init
 from karsk.commands.install import subcommand_install
 from karsk.commands.schema import subcommand_schema
 from karsk.commands.sync import subcommand_sync
@@ -17,6 +18,7 @@ def cli() -> None:
 
 cli.add_command(subcommand_build)
 cli.add_command(subcommand_enter)
+cli.add_command(subcommand_init)
 cli.add_command(subcommand_install)
 cli.add_command(subcommand_schema)
 cli.add_command(subcommand_sync)

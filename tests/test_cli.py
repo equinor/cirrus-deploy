@@ -104,3 +104,30 @@ def test_enter_accepts_args(runner, config_file):
         ["enter", str(config_file), "--staging", str(config_file.parent), "--help"],
     )
     assert result.exit_code == 0
+
+
+def test_init_help(runner):
+    result = runner.invoke(cli, ["init", "--help"])
+    assert result.exit_code == 0
+
+
+def test_init_creates_project(runner, tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    result = runner.invoke(cli, ["init", "myproject"])
+    assert result.exit_code == 0, result.output
+
+    assert set(tmp_path.glob("**/*")) == {
+        tmp_path / "myproject",
+        tmp_path / "myproject/Containerfile",
+        tmp_path / "myproject/config.yaml",
+        tmp_path / "myproject/karsk_tests",
+        tmp_path / "myproject/karsk_tests/test_version.py",
+    }
+
+
+def test_init_fails_if_directory_exists(runner, tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    (tmp_path / "existing").mkdir()
+    result = runner.invoke(cli, ["init", "existing"])
+    assert result.exit_code != 0
+    assert "Project directory isn't empty" in result.output

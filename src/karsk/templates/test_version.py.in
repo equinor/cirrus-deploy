@@ -1,0 +1,16 @@
+from asyncio.subprocess import PIPE
+
+from karsk.context import Context
+
+
+async def test_version_of_{name_underscore}(karsk: Context):
+    expected = karsk["{name}"].config.version
+
+    proc = await karsk.run(
+        karsk.out("{name}", staging=False) / "bin/{name}",
+        "--version",
+        stdout=PIPE,
+    )
+    stdout, _ = await proc.communicate()
+    assert proc.returncode == 0
+    assert expected in stdout.decode()
