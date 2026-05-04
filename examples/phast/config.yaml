@@ -1,0 +1,35 @@
+# yaml-language-server: $schema=https://equinor.github.io/karsk/schema.json
+
+destination: /opt/phast
+main-package: phast
+entrypoint: bin/phast
+build-image: ./Containerfile
+tests: ./karsk_tests/
+
+packages:
+  - name: hdf5
+    version: 2.1.1
+    src:
+      type: git
+      url: https://github.com/HDFGroup/hdf5
+      ref: 4fde4fd787744b6a19b12032f4dad0383fbe6fbd
+
+    build: |
+      mkdir _build; cd _build
+      cmake -DCMAKE_INSTALL_PREFIX=$out ..
+      make
+      make install
+
+
+  - name: phast
+    version: 3.8.6-17100
+    depends: [ hdf5 ]
+    src:
+      type: archive
+      url: https://water.usgs.gov/water-resources/software/PHAST/phast-3.8.6-17100.tar.gz
+
+    build: |
+      mkdir _build; cd _build
+      cmake -DCMAKE_INSTALL_PREFIX=$out -DCMAKE_PREFIX_PATH=$hdf5 -DCMAKE_INSTALL_RPATH=$hdf5/lib ..
+      make
+      make install

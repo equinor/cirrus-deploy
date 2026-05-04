@@ -15,7 +15,7 @@ from typing import IO, Any
 from karsk.console import console
 
 
-VolumeBind: TypeAlias = tuple[str | Path, str | Path, Literal["ro", "rw"]]
+VolumeBind: TypeAlias = tuple[str | Path, str | Path, Literal["ro", "rw", "O"]]
 
 EngineName = Literal["docker", "podman"]
 CpuArchName = Literal["arm64", "amd64"]

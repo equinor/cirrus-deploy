@@ -1,0 +1,4 @@
+FROM rockylinux:8
+
+RUN dnf -y groupinstall "Development Tools"
+RUN dnf -y install cmake gcc-gfortran boost-devel
