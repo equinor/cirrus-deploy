@@ -1,0 +1,52 @@
+# yaml-language-server: $schema=https://equinor.github.io/karsk/schema.json
+
+destination: /opt/{name}
+main-package: {name}
+entrypoint: bin/{name}
+build-image: ./Containerfile
+tests: ./karsk_tests/
+
+packages:
+  - name: {name}
+
+    # Package version
+    version: 0.1.0
+
+    # Which karsk packages to require before building this package.
+    # Note: Each package's $out is exposed in this build script via $[NAME]. 
+    depends: []
+
+    # Packages generally need to have a 'src' field
+    #
+    # For a git-based source
+    #
+    #   src:
+    #     type: git
+    #     url: https://example.com/project.git
+    #     ref: [COMMIT HASH or TAG]
+    #
+    # For an source tarball:
+    #
+    #   src:
+    #     type: archive
+    #     url: https://example.com/project.tar.gz
+    # 
+    # For a file relative to the karsk config location:
+    #
+    #   src:
+    #     type: file
+    #     path: my_file.txt
+    #
+    src:
+
+    # Build script
+    #
+    # The following is an example of a build script for a simple
+    # autotools-based project:
+    #
+    #   ./configure --prefix=$out
+    #   make
+    #   make install
+    #
+    build: |
+      exit 1

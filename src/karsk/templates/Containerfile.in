@@ -1,0 +1,6 @@
+FROM rockylinux:8
+
+RUN dnf -y groupinstall "Development Tools"
+
+# Add additional build dependencies below as needed, e.g.:
+# RUN dnf -y install openssl-devel zlib-devel
