@@ -13,6 +13,7 @@ from karsk.commands._common import argument_config_file, option_staging
 from karsk.context import Context
 from karsk.engine import VolumeBind
 from karsk.console import console
+from karsk.engine import EngineNameNative
 
 
 class VolumeBindType(click.ParamType):
@@ -71,11 +72,15 @@ VOLUME_BIND = VolumeBindType()
 @option_staging
 @click.option("--volume", type=VOLUME_BIND)
 def subcommand_enter(
-    config_file: Path, staging: Path, args: tuple[str, ...], volume: VolumeBind
+    config_file: Path,
+    staging: Path,
+    args: tuple[str, ...],
+    engine: EngineNameNative | None,
+    volume: VolumeBind,
 ) -> None:
     if args == ():
         args = ("bash",)
 
-    ctx = Context.from_config_file(config_file, staging=staging)
+    ctx = Context.from_config_file(config_file, staging=staging, engine=engine)
     console.log("Destination path:", ctx.destination)
     asyncio.run(_main(ctx, *args, volume=volume))

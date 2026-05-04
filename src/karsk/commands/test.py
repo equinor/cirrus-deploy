@@ -22,7 +22,7 @@ def subcommand_test(
     import pytest
     import karsk.testing
 
-    ctx = Context.from_config_file(config_file, staging=staging)
+    ctx = Context.from_config_file(config_file, staging=staging, engine=engine)
     if ctx.config.tests is None:
         sys.exit(
             f"Config file '{config_file}' doesn't have 'tests' field pointing to a directory with tests"
