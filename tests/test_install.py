@@ -53,11 +53,11 @@ async def test_install_copies_to_destination(tmp_path, base_config):
 
     assert destination.exists()
     assert (destination / "store").is_dir()
-    assert (destination / "bin/run").exists()
+    assert (destination / "bin/test_script.sh").exists()
     assert (destination / "versions/latest").is_symlink()
     assert (destination / "versions/stable").is_symlink()
 
-    wrapper = destination / "bin/run"
+    wrapper = destination / "bin/test_script.sh"
     result = subprocess.run([str(wrapper)], capture_output=True, text=True)
     assert result.returncode == 0
     assert "hello" in result.stdout
@@ -128,7 +128,7 @@ async def test_install_hello_world_example(tmp_path, monkeypatch):
     install_all(install_ctx)
 
     assert destination.exists()
-    wrapper = destination / "bin" / "run"
+    wrapper = destination / "bin" / "binary.sh"
     assert wrapper.exists()
     result = subprocess.run([str(wrapper)], capture_output=True, text=True)
     assert result.returncode == 0

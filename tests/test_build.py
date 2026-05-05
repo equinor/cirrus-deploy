@@ -141,7 +141,7 @@ async def _build_wrapper(tmp_path, base_config, version="1.0.0", preamble=""):
     )
     await build_all(ctx)
 
-    return tmp_path / "bin/run"
+    return tmp_path / "bin/test_script.sh"
 
 
 async def test_functional_wrapper_script(tmp_path, base_config):
@@ -277,7 +277,7 @@ async def test_hello_world_example(tmp_path, monkeypatch):
     )
     await build_all(ctx)
 
-    wrapper = tmp_path / "bin" / "run"
+    wrapper = tmp_path / "bin" / "binary.sh"
     assert wrapper.exists()
     result = subprocess.run([str(wrapper)], capture_output=True, text=True)
     assert result.returncode == 0
@@ -293,6 +293,7 @@ def test_build_with_non_local_prefix(tmp_path, base_config):
         {"name": "test", "version": "1.0.0", "build": "mkdir -p $out/bin\n"}
     )
     base_config["main-package"] = "test"
+    base_config["entrypoint"] = "bin/hello"
 
     ctx = Context.from_config(
         base_config, cwd=tmp_path, staging=staging, engine="native"
@@ -305,7 +306,7 @@ def test_build_with_non_local_prefix(tmp_path, base_config):
 
     _build_envs(ctx, ctx.staging_paths)
 
-    assert (staging / "bin/run").exists()
+    assert (staging / "bin/hello").exists()
     assert (staging / "versions/stable").is_symlink()
     assert (staging / "versions/latest").is_symlink()
 

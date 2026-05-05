@@ -29,7 +29,7 @@ async def test_hello_world_example(tmp_path, monkeypatch):
     ctx = Context.from_config_file(Path("config.yaml"), staging=tmp_path)
     await build_all(ctx)
 
-    wrapper = tmp_path / "bin" / "run"
+    wrapper = tmp_path / "bin" / "binary.sh"
     assert wrapper.exists()
     proc = await ctx.run(
         ctx.out("hello", staging=False) / "bin/binary.sh", stdout=PIPE, stderr=PIPE
