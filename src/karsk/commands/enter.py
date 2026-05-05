@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import asyncio
+from typing import Literal
+
 from pathlib import Path
 import shlex
 import sys
@@ -9,10 +11,42 @@ import click
 
 from karsk.commands._common import argument_config_file, option_staging
 from karsk.context import Context
+from karsk.engine import VolumeBind
 from karsk.console import console
 
 
-async def _main(ctx: Context, *args: str) -> None:
+class VolumeBindType(click.ParamType):
+    name = "volume"
+
+    def convert(
+        self, value: str, param: click.Parameter | None, ctx: click.Context | None
+    ) -> VolumeBind:
+
+        parts = value.split(":")
+        if len(parts) not in (2, 3):
+            self.fail(
+                "Volume must be in the form /src/path:/dst/path[:ro|rw]",
+                param,
+                ctx,
+            )
+
+        src_str, dst_str = parts[:2]
+        mode: Literal["ro", "rw"] = parts[2] if len(parts) == 3 else "rw"  # type: ignore[assignment]
+
+        if mode not in ("ro", "rw"):
+            self.fail("Mode must be 'ro' or 'rw'", param, ctx)
+
+        src = Path(src_str)
+        if not src.exists():
+            self.fail(f"Source must be an existing path:{src}", param, ctx)
+
+        dst = Path(dst_str)
+        result: VolumeBind = (src.absolute(), dst, mode)
+
+        return result
+
+
+async def _main(ctx: Context, *args: str, volume: VolumeBind) -> None:
     cwd = Path.cwd()
     home = Path.home()
 
@@ -22,18 +56,26 @@ async def _main(ctx: Context, *args: str) -> None:
         cwd = Path("/")
 
     console.log(f"Entering Karsk environment using command: [blue]{shlex.join(args)}")
-    proc = await ctx.run(*args, volumes=[(home, home, "rw")], cwd=cwd, terminal=True)
+    proc = await ctx.run(
+        *args, volumes=[(home, home, "rw"), volume], cwd=cwd, terminal=True
+    )
     sys.exit(await proc.wait())
+
+
+VOLUME_BIND = VolumeBindType()
 
 
 @click.command("enter", help="Enter environment")
 @argument_config_file
 @click.argument("args", nargs=-1)
 @option_staging
-def subcommand_enter(config_file: Path, staging: Path, args: tuple[str, ...]) -> None:
+@click.option("--volume", type=VOLUME_BIND)
+def subcommand_enter(
+    config_file: Path, staging: Path, args: tuple[str, ...], volume: VolumeBind
+) -> None:
     if args == ():
         args = ("bash",)
 
     ctx = Context.from_config_file(config_file, staging=staging)
     console.log("Destination path:", ctx.destination)
-    asyncio.run(_main(ctx, *args))
+    asyncio.run(_main(ctx, *args, volume=volume))
