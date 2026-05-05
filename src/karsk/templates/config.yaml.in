@@ -2,7 +2,8 @@
 
 destination: /opt/{name}
 main-package: {name}
-entrypoint: bin/{name}
+entrypoints:
+  - bin/{name}
 build-image: ./Containerfile
 tests: ./karsk_tests/
 

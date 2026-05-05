@@ -15,7 +15,7 @@ def base_config():
     return {
         "destination": "/opt/karsk/test",
         "main-package": "",
-        "entrypoint": "",
+        "entrypoints": [],
         "build-image": os.path.join(os.path.dirname(__file__), "test_build_image"),
         "packages": [],
     }
@@ -132,7 +132,7 @@ async def _build_wrapper(tmp_path, base_config, version="1.0.0", preamble=""):
             chmod +x $out/bin/test_script.sh""",
         }
     )
-    base_config["entrypoint"] = "bin/test_script.sh"
+    base_config["entrypoints"] = ["bin/test_script.sh"]
     base_config["main-package"] = "test"
     base_config["destination"] = str(tmp_path)
 
@@ -293,7 +293,7 @@ def test_build_with_non_local_prefix(tmp_path, base_config):
         {"name": "test", "version": "1.0.0", "build": "mkdir -p $out/bin\n"}
     )
     base_config["main-package"] = "test"
-    base_config["entrypoint"] = "bin/hello"
+    base_config["entrypoints"] = ["bin/hello"]
 
     ctx = Context.from_config(
         base_config, cwd=tmp_path, staging=staging, engine="native"
@@ -309,6 +309,54 @@ def test_build_with_non_local_prefix(tmp_path, base_config):
     assert (staging / "bin/hello").exists()
     assert (staging / "versions/stable").is_symlink()
     assert (staging / "versions/latest").is_symlink()
+
+
+async def test_multiple_entrypoints_creates_wrapper_scripts(tmp_path, base_config):
+
+    staging = tmp_path / "staging"
+
+    base_config["packages"].append(
+        {
+            "name": "test",
+            "version": "1.0.0",
+            "build": "mkdir -p $out/bin\n",
+        }
+    )
+    base_config["main-package"] = "test"
+    base_config["entrypoints"] = ["bin/alpha", "bin/beta"]
+
+    ctx = Context.from_config(
+        base_config, cwd=tmp_path, staging=staging, engine="native"
+    )
+
+    pkg = ctx.out("test")
+    pkg.mkdir(parents=True)
+    (pkg / "bin").mkdir()
+    (pkg / "bin/alpha").write_text('#!/bin/bash\necho alpha "$@"\n')
+    (pkg / "bin/alpha").chmod(0o755)
+    (pkg / "bin/beta").write_text('#!/bin/bash\necho beta "$@"\n')
+    (pkg / "bin/beta").chmod(0o755)
+
+    _build_envs(ctx, ctx.staging_paths)
+
+    wrapper_alpha = staging / "bin/alpha"
+    wrapper_beta = staging / "bin/beta"
+    assert wrapper_alpha.exists()
+    assert wrapper_beta.exists()
+
+    result_alpha = subprocess.run([str(wrapper_alpha)], capture_output=True, text=True)
+    assert result_alpha.returncode == 0
+    assert "alpha" in result_alpha.stdout
+
+    result_beta = subprocess.run([str(wrapper_beta)], capture_output=True, text=True)
+    assert result_beta.returncode == 0
+    assert "beta" in result_beta.stdout
+
+    result_alpha_args = subprocess.run(
+        [str(wrapper_alpha), "arg1", "arg2"], capture_output=True, text=True
+    )
+    assert result_alpha_args.returncode == 0
+    assert "alpha arg1 arg2" in result_alpha_args.stdout
 
 
 def test_install_appends_build_id_when_manifest_differs(tmp_path: Path, base_config):
@@ -330,7 +378,7 @@ def test_install_appends_build_id_when_manifest_differs(tmp_path: Path, base_con
 
     base_config["destination"] = str(destination)
     base_config["main-package"] = "test"
-    base_config["entrypoint"] = "bin/hello"
+    base_config["entrypoints"] = ["bin/hello"]
     base_config["packages"] = [
         {"name": "test", "version": "1.0.0", "build": "echo v1\n"}
     ]

@@ -1,5 +1,6 @@
 main-package: runcirrus
-entrypoint: bin/runcirrus
+entrypoints:
+  - bin/runcirrus
 
 packages:
   - name: runcirrus

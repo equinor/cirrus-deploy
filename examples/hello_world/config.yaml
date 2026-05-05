@@ -1,6 +1,7 @@
 destination: /opt/karsk/test
 main-package: hello
-entrypoint: bin/binary.sh
+entrypoints:
+  - bin/binary.sh
 build-image: Containerfile
 tests: ./karsk_tests/
 

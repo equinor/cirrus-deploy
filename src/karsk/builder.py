@@ -90,20 +90,24 @@ exec "$ENTRY_POINT" "${{FORWARD_ARGS[@]}}"
 
 
 def _create_wrapper_script(ctx: Context, bin_dir: Path) -> None:
-    if not ctx.config.entrypoint.name:
+    if not ctx.config.entrypoints:
         return
 
     bin_dir.mkdir(parents=True, exist_ok=True)
 
-    wrapper_script = bin_dir / ctx.config.entrypoint.name
+    for entrypoint in ctx.config.entrypoints:
+        if not entrypoint.name:
+            continue
 
-    wrapper_script.write_text(
-        SCRIPT_TEMPLATE.format(
-            package_name=ctx.config.main_package,
-            entrypoint=ctx.config.entrypoint,
+        wrapper_script = bin_dir / entrypoint.name
+
+        wrapper_script.write_text(
+            SCRIPT_TEMPLATE.format(
+                package_name=ctx.config.main_package,
+                entrypoint=entrypoint,
+            )
         )
-    )
-    wrapper_script.chmod(0o755)
+        wrapper_script.chmod(0o755)
 
 
 async def _async_build(
