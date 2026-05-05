@@ -1,10 +1,13 @@
+from pathlib import Path
 from unittest.mock import AsyncMock, patch
 
 import pytest
 import yaml
+from click import BadParameter
 from click.testing import CliRunner
 
 from karsk.cli import cli
+from karsk.commands.enter import VolumeBindType
 
 
 @pytest.fixture
@@ -131,3 +134,45 @@ def test_init_fails_if_directory_exists(runner, tmp_path, monkeypatch):
     result = runner.invoke(cli, ["init", "existing"])
     assert result.exit_code != 0
     assert "Project directory isn't empty" in result.output
+
+
+@pytest.fixture
+def volume_type():
+    return VolumeBindType()
+
+
+@pytest.mark.parametrize(
+    "suffix, expected_mode",
+    [
+        pytest.param("", "rw", id="two-parts-defaults-rw"),
+        pytest.param(":ro", "ro", id="three-parts-ro"),
+        pytest.param(":rw", "rw", id="three-parts-rw"),
+    ],
+)
+def test_volume_bind_converts(volume_type, tmp_path, suffix, expected_mode):
+    src = tmp_path / "src"
+    src.mkdir()
+    result = volume_type.convert(f"{src}:/dst/path{suffix}", None, None)
+    assert result == (src, Path("/dst/path"), expected_mode)
+
+
+@pytest.mark.parametrize(
+    "value",
+    [
+        pytest.param("/only/one", id="single-part"),
+        pytest.param("/a:/b:ro:extra", id="four-parts"),
+        pytest.param("/src:/dst:xx", id="invalid-mode"),
+        pytest.param("/nonexistent/path:/dst", id="nonexistent-source"),
+    ],
+)
+def test_volume_bind_fails_on_invalid_input(volume_type, value):
+    with pytest.raises(BadParameter):
+        volume_type.convert(value, None, None)
+
+
+def test_volume_bind_src_is_made_absolute(volume_type, monkeypatch, tmp_path):
+    monkeypatch.chdir(tmp_path)
+    (tmp_path / "relative").mkdir()
+    result = volume_type.convert("relative:/dst/path", None, None)
+    assert result[0].is_absolute()
+    assert result[0] == tmp_path / "relative"
