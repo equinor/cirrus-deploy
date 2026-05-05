@@ -20,7 +20,7 @@ def config_file(tmp_path):
     config = {
         "destination": str(tmp_path / "dest"),
         "main-package": "hello",
-        "entrypoint": "bin/hello",
+        "entrypoints": ["bin/hello"],
         "build-image": str(containerfile),
         "packages": [
             {

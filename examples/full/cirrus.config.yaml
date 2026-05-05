@@ -1,6 +1,7 @@
 destination: /prog/cirrus
 main-package: pflotran
-entrypoint: bin/cirrus
+entrypoints:
+  - bin/cirrus
 build-image: ./Containerfile
 
 packages:

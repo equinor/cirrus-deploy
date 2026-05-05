@@ -34,7 +34,7 @@ def base_config():
         "destination": "/opt/karsk/test",
         "main-package": "A",
         "build-image": "test_build_image",
-        "entrypoint": "",
+        "entrypoints": [],
         "packages": [
             {
                 "name": "A",

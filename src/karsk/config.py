@@ -25,8 +25,8 @@ class Config(BaseModel):
         description="Absolute path to deployment area to be managed by Karsk (eg: '/opt/karsk')"
     )
     main_package: str = Field(description="Name of primary package (eg: 'hello')")
-    entrypoint: Path = Field(
-        description="Relative path to main executable to wrap in the run script (eg: 'bin/hello')"
+    entrypoints: list[Path] = Field(
+        description="List of relative paths to executables to expose via wrapper scripts (eg: ['bin/hello'])"
     )
     build_image: FilePath = Field(
         description="Path to containerfile to use for building (eg: './Containerfile')"
@@ -51,11 +51,12 @@ class Config(BaseModel):
             raise ValueError(f"{value} must be an absolute path")
         return value
 
-    @field_validator("entrypoint")
+    @field_validator("entrypoints")
     @classmethod
-    def validate_is_relative_path(cls, value: Path) -> Path:
-        if value.is_absolute():
-            raise ValueError(f"{value} must be a relative path")
+    def validate_is_relative_path(cls, value: list[Path]) -> list[Path]:
+        for v in value:
+            if v.is_absolute():
+                raise ValueError(f"{v} must be a relative path")
         return value
 
     @field_validator("build_image", "tests", mode="before")

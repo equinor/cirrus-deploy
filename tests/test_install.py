@@ -14,7 +14,7 @@ def base_config():
     return {
         "destination": "/opt/karsk/test",
         "main-package": "test",
-        "entrypoint": "bin/test_script.sh",
+        "entrypoints": ["bin/test_script.sh"],
         "build-image": os.path.join(os.path.dirname(__file__), "test_build_image"),
         "packages": [],
     }

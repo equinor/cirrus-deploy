@@ -89,7 +89,7 @@ def config(tmp_path: Path, git_foo: Git, git_bar: Git) -> Config:
         "destination": "/opt/karsk/test",
         "main-package": "bar",
         "build-image": os.path.join(os.path.dirname(__file__), "Containerfile"),
-        "entrypoint": "",
+        "entrypoints": [],
         "packages": [foo_config, bar_config],
         "links": {},
     }
