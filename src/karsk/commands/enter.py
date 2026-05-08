@@ -56,10 +56,12 @@ async def _main(ctx: Context, *args: str, volume: VolumeBind) -> None:
     if not cwd.is_relative_to(home):
         cwd = Path("/")
 
+    volumes: list[VolumeBind] = [(home, home, "rw")]
+    if volume is not None:
+        volumes.append(volume)
+
     console.log(f"Entering Karsk environment using command: [blue]{shlex.join(args)}")
-    proc = await ctx.run(
-        *args, volumes=[(home, home, "rw"), volume], cwd=cwd, terminal=True
-    )
+    proc = await ctx.run(*args, volumes=volumes, cwd=cwd, terminal=True)
     sys.exit(await proc.wait())
 
 
