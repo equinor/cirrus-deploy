@@ -9,7 +9,7 @@ import sys
 
 import click
 
-from karsk.commands._common import argument_config_file, option_staging
+from karsk.commands._common import argument_config_file, option_staging, option_engine
 from karsk.context import Context
 from karsk.engine import VolumeBind
 from karsk.console import console
@@ -70,6 +70,7 @@ VOLUME_BIND = VolumeBindType()
 @argument_config_file
 @click.argument("args", nargs=-1)
 @option_staging
+@option_engine
 @click.option("--volume", type=VOLUME_BIND)
 def subcommand_enter(
     config_file: Path,
