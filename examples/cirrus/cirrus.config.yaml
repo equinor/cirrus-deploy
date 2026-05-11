@@ -1,3 +1,5 @@
+# yaml-language-server: $schema=https://equinor.github.io/karsk/schema.json
+
 destination: /prog/cirrus
 main-package: pflotran
 entrypoints:
@@ -35,7 +37,7 @@ packages:
 
   - name: pflotran
     version: 1.8.12
-    depends: [ petsc ]
+    depends: [petsc]
     src:
       type: git
       url: https://bitbucket.org/opengosim/pflotran_ogs_1.8

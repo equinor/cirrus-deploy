@@ -1,3 +1,5 @@
+# yaml-language-server: $schema=https://equinor.github.io/karsk/schema.json
+
 destination: /opt/karsk/test
 main-package: hello
 entrypoints:

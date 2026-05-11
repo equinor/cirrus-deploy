@@ -1,6 +1,10 @@
+# yaml-language-server: $schema=https://equinor.github.io/karsk/schema.json
+
+destination: /prog/cirrus
 main-package: runcirrus
 entrypoints:
   - bin/runcirrus
+build-image: ./Containerfile
 
 packages:
   - name: runcirrus
