@@ -1,6 +1,8 @@
+# yaml-language-server: $schema=https://equinor.github.io/karsk/schema.json
 destination: /opt/karsk/linking
 main-package: app
-entrypoint: bin/app
+entrypoints:
+  - bin/app
 build-image: Containerfile
 
 packages:

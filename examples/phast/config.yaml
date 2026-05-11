@@ -2,7 +2,8 @@
 
 destination: /opt/phast
 main-package: phast
-entrypoint: bin/phast
+entrypoints:
+  - bin/phast
 build-image: ./Containerfile
 tests: ./karsk_tests/
 
@@ -20,10 +21,9 @@ packages:
       make
       make install
 
-
   - name: phast
     version: 3.8.6-17100
-    depends: [ hdf5 ]
+    depends: [hdf5]
     src:
       type: archive
       url: https://water.usgs.gov/water-resources/software/PHAST/phast-3.8.6-17100.tar.gz
