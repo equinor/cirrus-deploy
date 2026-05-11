@@ -151,6 +151,13 @@ class Context:
 
             self.ensure_built(package)
 
+        if self.staging_paths.bin.is_dir():
+            volumes.append((self.staging_paths.bin, self.target_paths.bin, "ro"))
+        if self.staging_paths.versions.is_dir():
+            volumes.append(
+                (self.staging_paths.versions, self.target_paths.versions, "ro")
+            )
+
         return await self.engine(
             image,
             program,
