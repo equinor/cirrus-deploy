@@ -16,6 +16,9 @@ from karsk.console import console
 from karsk.engine import EngineNameNative
 
 
+KARSK_BASHRC = Path(__file__).parent / "../data/enter.bashrc"
+
+
 class VolumeBindType(click.ParamType):
     name = "volume"
 
@@ -60,11 +63,13 @@ async def _main(ctx: Context, *args: str, volumes: tuple[VolumeBind, ...]) -> No
     proc = await ctx.run(
         *args,
         volumes=[
+            (KARSK_BASHRC, "/etc/karsk.bashrc", "ro"),
             (ctx.staging_paths.bin, ctx.target_paths.bin, "ro"),
             (ctx.staging_paths.versions, ctx.target_paths.versions, "ro"),
             (home, home, "rw"),
             *volumes,
         ],
+        env={"KARSK_PATH": str(ctx.target_paths.bin)},
         cwd=cwd,
         terminal=True,
     )
@@ -88,7 +93,7 @@ def subcommand_enter(
     volume: tuple[VolumeBind, ...],
 ) -> None:
     if args == ():
-        args = ("bash",)
+        args = ("bash", "--rcfile", "/etc/karsk.bashrc")
 
     ctx = Context.from_config_file(config_file, staging=staging, engine=engine)
     console.log("Destination path:", ctx.destination)

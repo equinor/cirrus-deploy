@@ -29,3 +29,6 @@ venv
 
 # MkDocs
 site/
+
+# karsk-enter side-effects
+.bash_history
