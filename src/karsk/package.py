@@ -16,10 +16,12 @@ class Package:
         config: PackageConfig,
         depends: list[Package],
         build_image: Path,
+        initial_hash: bytes,
     ) -> None:
         self.config = config
         self.depends = depends
         self.build_image: Path = build_image
+        self.initial_hash = initial_hash
 
     @property
     def fullname(self) -> str:
@@ -49,6 +51,7 @@ class Package:
     def buildhash(self) -> str:
         h = hashlib.sha1(usedforsecurity=False)
 
+        h.update(self.initial_hash)
         h.update(self.config.model_dump_json().encode("utf-8"))
 
         if (

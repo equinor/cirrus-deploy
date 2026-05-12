@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 from itertools import chain
 import sys
 import networkx as nx
@@ -32,6 +33,7 @@ class PackageList:
             for dep in package.depends:
                 graph.add_edge(dep, package.name)
 
+        initial_hash = self._initial_hash()
         transitive_depends: dict[Package, list[Package]] = {}
         self.packages: dict[str, Package] = {}
         for node in nx.topological_sort(graph):
@@ -47,12 +49,21 @@ class PackageList:
                 package_config,
                 node_depends,
                 config.build_image,
+                initial_hash,
             )
             transitive_depends[new_package] = node_depends
             self.packages[node] = new_package
 
         if check_existence:
             self._check_existence()
+
+    def _initial_hash(self) -> bytes:
+        h = hashlib.sha1(usedforsecurity=False)
+
+        h.update(self.config.destination.as_posix().encode())
+        h.update(self.config.build_image.read_bytes())
+
+        return h.digest()
 
     def volumes(self, package_names: list[str]) -> list[VolumeBind]:
         pnames = set(package_names)
