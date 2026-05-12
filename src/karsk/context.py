@@ -6,6 +6,7 @@ from typing import IO, Any, Self
 from asyncio.subprocess import Process
 from karsk.config import Config, load_config
 from karsk.engine import (
+    CpuArchName,
     CpuArchNameNative,
     Engine,
     EngineNameNative,
@@ -18,6 +19,12 @@ from karsk.console import console
 from karsk.paths import Paths
 
 
+TARGET_TRIPLETS: dict[CpuArchName, str] = {
+    "amd64": "x86_64-unknown-linux",
+    "arm64": "aarch64-unknown-linux",
+}
+
+
 class Context:
     def __init__(
         self,
@@ -28,6 +35,11 @@ class Context:
         arch: CpuArchNameNative = "native",
     ) -> None:
         self.config: Config = config
+        self.engine: Engine = get_engine(engine, arch)
+
+        if self.engine.name != "native":
+            staging = staging / config.main_package / TARGET_TRIPLETS[self.engine.arch]
+
         self.staging_paths: Paths = Paths(staging, is_staging=True)
         self.target_paths: Paths = Paths(config.destination)
         self.plist: PackageList = PackageList(
@@ -36,7 +48,6 @@ class Context:
             self.target_paths,
             check_existence=False,
         )
-        self.engine: Engine = get_engine(engine, arch)
 
     @property
     def destination(self) -> Path:

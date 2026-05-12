@@ -2,7 +2,7 @@ from asyncio.subprocess import PIPE
 from pathlib import Path
 
 from karsk.builder import build_all
-from karsk.context import Context
+from karsk.context import TARGET_TRIPLETS, Context
 
 
 async def test_hello_world_example(tmp_path, monkeypatch):
@@ -29,7 +29,9 @@ async def test_hello_world_example(tmp_path, monkeypatch):
     ctx = Context.from_config_file(Path("config.yaml"), staging=tmp_path)
     await build_all(ctx)
 
-    wrapper = tmp_path / "bin" / "binary.sh"
+    wrapper = (
+        tmp_path / "hello" / TARGET_TRIPLETS[ctx.engine.arch] / "bin" / "binary.sh"
+    )
     assert wrapper.exists()
     proc = await ctx.run(
         ctx.out("hello", staging=False) / "bin/binary.sh", stdout=PIPE, stderr=PIPE
