@@ -1,3 +1,4 @@
+from karsk.paths import Paths
 import os
 from pathlib import Path
 
@@ -41,19 +42,14 @@ async def test_install_copies_to_destination(tmp_path, base_config):
         }
     )
 
-    build_ctx = Context.from_config(
+    ctx = Context.from_config(
         base_config, cwd=tmp_path, staging=build_dir, engine="native"
     )
-    await build_all(build_ctx, stop_after=build_ctx["test"])
-
-    base_config["destination"] = str(destination)
-    install_ctx = Context.from_config(
-        base_config, cwd=tmp_path, staging=build_dir, engine="native"
-    )
+    await build_all(ctx, stop_after=ctx["test"])
 
     assert not destination.exists()
 
-    await install_all(install_ctx)
+    await install_all(ctx, target_paths=Paths(destination))
 
     assert destination.exists()
     assert (destination / "store").is_dir()
@@ -75,20 +71,15 @@ async def test_install_idempotent(tmp_path: Path, base_config):
         }
     )
 
-    build_ctx = Context.from_config(
+    ctx = Context.from_config(
         base_config, cwd=tmp_path, staging=build_dir, engine="native"
     )
-    await build_all(build_ctx, stop_after=build_ctx["test"])
+    await build_all(ctx, stop_after=ctx["test"])
 
-    base_config["destination"] = str(destination)
-    install_ctx = Context.from_config(
-        base_config, cwd=tmp_path, staging=build_dir, engine="native"
-    )
-
-    await install_all(install_ctx)
+    await install_all(ctx, target_paths=Paths(destination))
     assert (destination / "versions/1.0.0+1").is_dir()
 
-    await install_all(install_ctx)
+    await install_all(ctx, target_paths=Paths(destination))
     assert (destination / "versions/1.0.0+1").is_dir()
     assert not (destination / "versions/1.0.0+2").exists()
 
@@ -110,21 +101,15 @@ async def test_install_hello_world_example(tmp_path, monkeypatch):
 
     monkeypatch.chdir(work_dir)
 
-    build_ctx = Context.from_config_file(
+    ctx = Context.from_config_file(
         Path("config.yaml"), staging=build_dir, engine="native"
     )
-    await build_all(build_ctx, stop_after=build_ctx["hello"])
+    await build_all(ctx, stop_after=ctx["hello"])
 
-    config_data["destination"] = str(destination)
     config_path.write_text(yaml.dump(config_data))
 
-    install_ctx = Context.from_config_file(
-        Path("config.yaml"), staging=build_dir, engine="native"
-    )
-
     assert not destination.exists()
-
-    await install_all(install_ctx)
+    await install_all(ctx, target_paths=Paths(destination))
 
     assert destination.exists()
     wrapper = destination / "bin" / "binary.sh"

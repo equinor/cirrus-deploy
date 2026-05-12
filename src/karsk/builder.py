@@ -230,10 +230,13 @@ async def build_all(ctx: Context, stop_after: Package | None = None) -> None:
     await _build_envs(ctx, ctx.staging_paths)
 
 
-async def install_all(ctx: Context) -> None:
+async def install_all(ctx: Context, *, target_paths: Paths | None = None) -> None:
+    if target_paths is None:
+        target_paths = ctx.target_paths
+
     for pkg in ctx.plist.packages.values():
         from_path = ctx.staging_paths.out(pkg)
-        to_path = ctx.target_paths.out(pkg)
+        to_path = target_paths.out(pkg)
 
         if not from_path.exists():
             sys.exit(
@@ -246,4 +249,4 @@ async def install_all(ctx: Context) -> None:
         _ = shutil.copytree(from_path, to_path)
         print(f"Installed {pkg.fullname} to {to_path}")
 
-    await _build_envs(ctx, ctx.target_paths)
+    await _build_envs(ctx, target_paths)
