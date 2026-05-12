@@ -9,9 +9,14 @@ import sys
 
 import click
 
-from karsk.commands._common import argument_config_file, option_staging, option_engine
+from karsk.commands._common import (
+    argument_config_file,
+    option_arch,
+    option_staging,
+    option_engine,
+)
 from karsk.context import Context
-from karsk.engine import VolumeBind
+from karsk.engine import CpuArchNameNative, VolumeBind
 from karsk.console import console
 from karsk.engine import EngineNameNative
 
@@ -84,17 +89,21 @@ VOLUME_BIND = VolumeBindType()
 @click.argument("args", nargs=-1)
 @option_staging
 @option_engine
+@option_arch
 @click.option("-v", "--volume", multiple=True, type=VOLUME_BIND)
 def subcommand_enter(
     config_file: Path,
     staging: Path,
     args: tuple[str, ...],
     engine: EngineNameNative | None,
+    arch: CpuArchNameNative,
     volume: tuple[VolumeBind, ...],
 ) -> None:
     if args == ():
         args = ("bash", "--rcfile", "/etc/karsk.bashrc")
 
-    ctx = Context.from_config_file(config_file, staging=staging, engine=engine)
+    ctx = Context.from_config_file(
+        config_file, staging=staging, engine=engine, arch=arch
+    )
     console.log("Destination path:", ctx.destination)
     asyncio.run(_main(ctx, *args, volumes=volume))
