@@ -1,6 +1,5 @@
 [project]
 name = "karsk"
-version = "0.3.0"
 description = "Tool for building and deploying software on HPC clusters"
 readme = "README.md"
 license = "GPL-3.0-or-later"
@@ -18,6 +17,7 @@ dependencies = [
   "httpx>=0.28.1",
   "aiofiles>=25.1.0",
 ]
+dynamic = ["version"]
 
 [dependency-groups]
 dev = [
@@ -44,8 +44,11 @@ karsk = "karsk.cli:cli"
 asyncio_mode = "auto"
 
 [build-system]
-requires = ["hatchling"]
+requires = ["hatchling", "uv-dynamic-versioning"]
 build-backend = "hatchling.build"
+
+[tool.hatch.version]
+source = "uv-dynamic-versioning"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/karsk"]
