@@ -17,6 +17,7 @@ option_engine = click.option(
     "--engine",
     type=click.Choice(get_args(EngineNameNative)),
     default=None,
+    envvar=["KARSK_ENGINE"],
 )
 option_prefix = click.option("--prefix", type=Path)
 option_staging = click.option(
