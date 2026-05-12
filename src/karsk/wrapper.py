@@ -50,8 +50,8 @@ async def build_wrapper(
             "--release",
             cwd="/work",
             volumes=[
+                (wrapper_src, "/work", "rw"),
                 (tmpdir, "/work/target", "rw"),
-                (wrapper_src, "/work", "ro"),
             ],
         )
         if await proc.wait() != os.EX_OK:
