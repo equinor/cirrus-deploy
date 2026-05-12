@@ -16,8 +16,9 @@ packages:
       ref: 4fde4fd787744b6a19b12032f4dad0383fbe6fbd
 
     build: |
+      cd /tmp
       mkdir _build; cd _build
-      cmake -DCMAKE_INSTALL_PREFIX=$out ..
+      cmake -DCMAKE_INSTALL_PREFIX=$out $src
       make
       make install
 

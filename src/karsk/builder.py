@@ -132,7 +132,7 @@ async def _build(ctx: Context, pkg: Package, tmp: str) -> None:
         if ctx.engine.name == "native":
             cwd = src
         else:
-            volumes.append((src, f"/tmp/pkgsrc/{src.name}", "O"))
+            volumes.append((src, f"/tmp/pkgsrc/{src.name}", "rw"))
             cwd = Path("/tmp/pkgsrc") / src.name
     elif src is not None and ctx.engine.name != "native":
         volumes.append((src, f"/tmp/pkgsrc/{src.name}", "ro"))
