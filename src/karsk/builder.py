@@ -22,6 +22,14 @@ from karsk.utils import redirect_output
 from karsk.wrapper import install_wrapper
 
 
+def _find_available_path(base: Path, prefix: str, limit: int = 1000) -> Path | None:
+    for i in range(limit):
+        candidate = base / f"{prefix}-{i}"
+        if not candidate.exists():
+            return candidate
+    return None
+
+
 async def _async_build(
     ctx: Context,
     pkg: Package,
@@ -147,11 +155,10 @@ async def _build(ctx: Context, pkg: Package, tmp: str) -> None:
         print("------ BUILD  LOG ------", file=buildlog)
 
         if not await _async_build(ctx, pkg, env, buildlog, volumes, cwd):
-            for i in range(1000):
-                fail_path = ctx.staging_paths.store / f"fail-{pkg.fullname}-{i}"
-                if not fail_path.exists():
-                    break
-            else:
+            fail_path = _find_available_path(
+                ctx.staging_paths.store, f"fail-{pkg.fullname}"
+            )
+            if fail_path is None:
                 sys.exit(f"Could not move failed build at {out}")
 
             out.rename(fail_path)
