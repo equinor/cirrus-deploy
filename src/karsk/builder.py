@@ -103,7 +103,7 @@ async def _build(ctx: Context, pkg: Package, tmp: str) -> None:
     print(f"Building {pkg.fullname}...")
     try:
         await fetch_single(ctx, pkg)
-    except BaseException:
+    except (Exception, KeyboardInterrupt):
         if src is not None:
             shutil.rmtree(src)
         shutil.rmtree(out)
