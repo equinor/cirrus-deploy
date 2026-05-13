@@ -191,12 +191,13 @@ def _build_env_for_package(paths: Paths, env_path: Path, main_package: Package) 
     for pkg in chain([main_package], main_package.depends):
         out = paths.out(pkg).resolve()
         for srcdir, _, files in os.walk(out):
-            dstdir = env_path / Path(srcdir).relative_to(out)
+            srcdir_path = Path(srcdir)
+            dstdir = env_path / srcdir_path.relative_to(out)
             dstdir.mkdir(parents=True, exist_ok=True)
             for f in files:
                 with suppress(FileExistsError):
-                    target = os.path.relpath(os.path.join(srcdir, f), dstdir.resolve())
-                    os.symlink(target, os.path.join(dstdir, f))
+                    target = os.path.relpath(srcdir_path / f, dstdir.resolve())
+                    (dstdir / f).symlink_to(target)
 
     # Write a manifest file
     (env_path / "manifest").write_text(main_package.manifest)
