@@ -18,7 +18,7 @@ def _write_file(
     if format_args:
         text = text.format(**format_args)
 
-    _ = path.write_text(text)
+    path.write_text(text)
     console.log(f"wrote\t{path}")
 
 

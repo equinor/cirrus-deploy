@@ -4,6 +4,7 @@ import sys
 from typing import IO, Any, Self
 
 from asyncio.subprocess import Process
+from karsk import KarskError
 from karsk.config import Config, load_config
 from karsk.engine import (
     CpuArchName,
@@ -15,7 +16,6 @@ from karsk.engine import (
 )
 from karsk.package import Package
 from karsk.package_list import PackageList
-from karsk.console import console
 from karsk.paths import Paths
 
 
@@ -23,6 +23,13 @@ TARGET_TRIPLETS: dict[CpuArchName, str] = {
     "amd64": "x86_64-unknown-linux",
     "arm64": "aarch64-unknown-linux",
 }
+
+
+def _append_volume_if_exists(
+    volumes: list[VolumeBind], staging: Path, target: Path
+) -> None:
+    if staging.is_dir():
+        volumes.append((staging, target, "ro"))
 
 
 class Context:
@@ -114,13 +121,10 @@ class Context:
                 missing.append(pname)
 
         if missing:
-            console.log(
-                f"[yellow]The following packages haven't been built:[bold] {', '.join(missing)}"
+            raise KarskError(
+                f"The following packages haven't been built: {', '.join(missing)}. "
+                "Run 'karsk build [CONFIG PATH]' to build all packages."
             )
-            console.log(
-                "[yellow]Run '[bold]karsk build [CONFIG PATH][/bold]' to build all packages"
-            )
-            sys.exit(1)
 
     async def run(
         self,
@@ -146,9 +150,10 @@ class Context:
             volumes = []
 
         if build:
-            assert isinstance(package, str), (
-                "if build is True, package kwarg must be a specific package to be built"
-            )
+            if not isinstance(package, str):
+                raise TypeError(
+                    "When build=True, package must be a specific package name (str)"
+                )
             image = self.config.build_image
             package = [package]
 
@@ -162,12 +167,10 @@ class Context:
 
             self.ensure_built(package)
 
-        if self.staging_paths.bin.is_dir():
-            volumes.append((self.staging_paths.bin, self.target_paths.bin, "ro"))
-        if self.staging_paths.versions.is_dir():
-            volumes.append(
-                (self.staging_paths.versions, self.target_paths.versions, "ro")
-            )
+        _append_volume_if_exists(volumes, self.staging_paths.bin, self.target_paths.bin)
+        _append_volume_if_exists(
+            volumes, self.staging_paths.versions, self.target_paths.versions
+        )
 
         return await self.engine(
             image,

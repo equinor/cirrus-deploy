@@ -56,13 +56,13 @@ class Sync:
 
         # Create preliminary script
         self._pre_script: io.StringIO = io.StringIO()
-        _ = self._pre_script.write("set -euxo pipefail\n")
-        _ = self._pre_script.write(f"mkdir -p {self.to_paths.store}\n")
-        _ = self._pre_script.write(f"mkdir -p {self.to_paths.versions}\n")
+        self._pre_script.write("set -euxo pipefail\n")
+        self._pre_script.write(f"mkdir -p {self.to_paths.store}\n")
+        self._pre_script.write(f"mkdir -p {self.to_paths.versions}\n")
 
         # Create symlinking script
         self._post_script: io.StringIO = io.StringIO()
-        _ = self._post_script.write("set -euxo pipefail\n")
+        self._post_script.write("set -euxo pipefail\n")
         self._post_script.writelines(
             f"ln -sfn {os.readlink(path)} {path} \n"
             for path in self.from_paths.versions.glob("*")
@@ -146,7 +146,8 @@ class Sync:
             start_new_session=True,
         )
 
-        assert proc.stdin is not None
+        if proc.stdin is None:
+            raise RuntimeError("Process stdin is None despite PIPE being requested")
         if input is not None:
             proc.stdin.write(input.encode())
         proc.stdin.close()
@@ -154,7 +155,7 @@ class Sync:
         stdout = io.StringIO()
         stderr = io.StringIO()
 
-        await asyncio.gather(
+        returncode, _, _ = await asyncio.gather(
             proc.wait(),
             redirect_output(
                 f"{area.name} {repr(context)}", proc.stdout, sys.stdout, stdout
@@ -164,8 +165,7 @@ class Sync:
             ),
         )
 
-        returncode = await proc.wait()
-        if proc.returncode != 0:
+        if returncode != 0:
             raise subprocess.CalledProcessError(
                 returncode, (program, *args), stdout.getvalue(), stderr.getvalue()
             )

@@ -16,7 +16,8 @@ class Paths:
 
     @property
     def cache(self) -> Path:
-        assert self._is_staging, "Cache path only exist in staging"
+        if not self._is_staging:
+            raise RuntimeError("Cache path only exists in staging")
         return self._base / "cache"
 
     def out(self, pkg: Package) -> Path:

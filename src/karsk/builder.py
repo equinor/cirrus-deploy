@@ -11,6 +11,7 @@ import shutil
 import sys
 from tempfile import NamedTemporaryFile, TemporaryDirectory
 
+from karsk import KarskError
 from karsk.console import console
 from karsk.context import Context
 from karsk.engine import VolumeBind
@@ -20,6 +21,14 @@ from karsk.package import Package
 from karsk.paths import Paths
 from karsk.utils import redirect_output
 from karsk.wrapper import install_wrapper
+
+
+def _find_available_path(base: Path, prefix: str, limit: int = 1000) -> Path | None:
+    for i in range(limit):
+        candidate = base / f"{prefix}-{i}"
+        if not candidate.exists():
+            return candidate
+    return None
 
 
 async def _async_build(
@@ -83,7 +92,7 @@ async def _async_build(
             terminal=True,
         )
 
-        _ = await proc.wait()
+        await proc.wait()
 
     return False
 
@@ -103,12 +112,37 @@ async def _build(ctx: Context, pkg: Package, tmp: str) -> None:
     print(f"Building {pkg.fullname}...")
     try:
         await fetch_single(ctx, pkg)
-    except BaseException:
+    except (Exception, KeyboardInterrupt):
         if src is not None:
             shutil.rmtree(src)
         shutil.rmtree(out)
         raise
 
+    env, volumes, cwd = _prepare_build_env(ctx, pkg, src, out, tmp)
+
+    with open(out / "build.log", "w") as buildlog:
+        print("Built with https://github.com/equinor/karsk", file=buildlog)
+        print(f"Build date: {datetime.now()}", file=buildlog)
+        print("----- BUILD CONFIG -----", file=buildlog)
+        print(pkg.config.model_dump_json(), file=buildlog)
+        print("------ BUILD  LOG ------", file=buildlog)
+
+        if not await _async_build(ctx, pkg, env, buildlog, volumes, cwd):
+            fail_path = _find_available_path(
+                ctx.staging_paths.store, f"fail-{pkg.fullname}"
+            )
+            if fail_path is None:
+                raise KarskError(f"Could not move failed build at {out}")
+
+            out.rename(fail_path)
+            raise KarskError(
+                f"Building {pkg.fullname} failed. Inspect the build at: {fail_path}"
+            )
+
+
+def _prepare_build_env(
+    ctx: Context, pkg: Package, src: Path | None, out: Path, tmp: str
+) -> tuple[dict[str, str], list[VolumeBind], Path]:
     env = {
         **{x.config.name: str(ctx.target_paths.out(x)) for x in pkg.depends},
         "tmp": tmp,
@@ -139,25 +173,7 @@ async def _build(ctx: Context, pkg: Package, tmp: str) -> None:
 
     volumes.append((out, ctx.target_paths.out(pkg), "rw"))
 
-    with open(out / "build.log", "w") as buildlog:
-        print("Built with https://github.com/equinor/karsk", file=buildlog)
-        print(f"Build date: {datetime.now()}", file=buildlog)
-        print("----- BUILD CONFIG -----", file=buildlog)
-        print(pkg.config.model_dump_json(), file=buildlog)
-        print("------ BUILD  LOG ------", file=buildlog)
-
-        if not await _async_build(ctx, pkg, env, buildlog, volumes, cwd):
-            for i in range(1000):
-                fail_path = ctx.staging_paths.store / f"fail-{pkg.fullname}-{i}"
-                if not fail_path.exists():
-                    break
-            else:
-                sys.exit(f"Could not move failed build at {out}")
-
-            _ = out.rename(fail_path)
-            sys.exit(
-                f"Building {pkg.fullname} failed. Inspect the build at: {fail_path}"
-            )
+    return env, volumes, cwd
 
 
 async def _build_packages(ctx: Context, stop_after: Package | None = None) -> None:
@@ -191,15 +207,16 @@ def _build_env_for_package(paths: Paths, env_path: Path, main_package: Package) 
     for pkg in chain([main_package], main_package.depends):
         out = paths.out(pkg).resolve()
         for srcdir, _, files in os.walk(out):
-            dstdir = env_path / Path(srcdir).relative_to(out)
+            srcdir_path = Path(srcdir)
+            dstdir = env_path / srcdir_path.relative_to(out)
             dstdir.mkdir(parents=True, exist_ok=True)
             for f in files:
                 with suppress(FileExistsError):
-                    target = os.path.relpath(os.path.join(srcdir, f), dstdir.resolve())
-                    os.symlink(target, os.path.join(dstdir, f))
+                    target = os.path.relpath(srcdir_path / f, dstdir.resolve())
+                    (dstdir / f).symlink_to(target)
 
     # Write a manifest file
-    _ = (env_path / "manifest").write_text(main_package.manifest)
+    (env_path / "manifest").write_text(main_package.manifest)
 
 
 def _get_versions_path(paths: Paths, finalpkg: Package) -> Path | None:
@@ -217,7 +234,7 @@ def _get_versions_path(paths: Paths, finalpkg: Package) -> Path | None:
             print(f"Environment already exists at {path}", file=sys.stderr)
             return None
 
-    sys.exit(
+    raise KarskError(
         f"Out of range while trying to find a build number for {finalpkg.config.version}"
     )
 
@@ -239,14 +256,14 @@ async def install_all(ctx: Context, *, target_paths: Paths | None = None) -> Non
         to_path = target_paths.out(pkg)
 
         if not from_path.exists():
-            sys.exit(
+            raise KarskError(
                 f"Package {pkg.fullname} has not been built. Run 'karsk build' first."
             )
         if to_path.exists():
             print(f"Already installed: {pkg.fullname}", file=sys.stderr)
             continue
         to_path.parent.mkdir(parents=True, exist_ok=True)
-        _ = shutil.copytree(from_path, to_path)
+        shutil.copytree(from_path, to_path)
         print(f"Installed {pkg.fullname} to {to_path}")
 
     await _build_envs(ctx, target_paths)

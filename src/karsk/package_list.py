@@ -2,9 +2,9 @@ from __future__ import annotations
 
 import hashlib
 from itertools import chain
-import sys
 import networkx as nx
 
+from karsk import KarskError
 from karsk.config import Config
 from karsk.engine import VolumeBind
 from karsk.package import Package
@@ -80,6 +80,6 @@ class PackageList:
         for pkg in self.packages.values():
             out = self.staging_paths.out(pkg)
             if not out.is_dir():
-                sys.exit(
+                raise KarskError(
                     f"{out} doesn't exist. Are you sure that '{pkg.fullname}' is installed?"
                 )

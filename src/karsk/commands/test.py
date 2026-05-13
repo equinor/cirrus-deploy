@@ -20,15 +20,24 @@ def subcommand_test(
     args: tuple[str, ...],
 ) -> None:
     import pytest
-    import karsk.testing
+    from karsk.testing import _CONTEXT_KEY
 
     ctx = Context.from_config_file(config_file, staging=staging, engine=engine)
     if ctx.config.tests is None:
-        sys.exit(
+        raise click.ClickException(
             f"Config file '{config_file}' doesn't have 'tests' field pointing to a directory with tests"
         )
 
     ctx.ensure_built()
 
-    karsk.testing._CONTEXT = ctx
-    sys.exit(pytest.main([str(ctx.config.tests), *args], plugins=["karsk.testing"]))
+    class _KarskPlugin:
+        @staticmethod
+        def pytest_configure(config: pytest.Config) -> None:
+            config.stash[_CONTEXT_KEY] = ctx
+
+    sys.exit(
+        pytest.main(
+            [str(ctx.config.tests), *args],
+            plugins=[_KarskPlugin(), "karsk.testing"],
+        )
+    )

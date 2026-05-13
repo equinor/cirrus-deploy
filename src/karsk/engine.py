@@ -7,11 +7,11 @@ from platform import machine
 import shlex
 import shutil
 import subprocess
-import sys
 from typing import Literal, Protocol, TypeAlias
 from typing import IO, Any
 from warnings import warn
 
+from karsk import KarskError
 from karsk.console import console
 
 
@@ -37,7 +37,7 @@ def _normalized_cpu_arch() -> Literal["arm64", "amd64"]:
             # x86_64 is reported by Python on Linux
             return "amd64"
         case arch:
-            sys.exit(f"Unknown/unsupported CPU architecture '{arch}'")
+            raise KarskError(f"Unknown/unsupported CPU architecture '{arch}'")
 
 
 class Engine(Protocol):
@@ -109,7 +109,7 @@ class _Engine:
             image.parent,
         )
         if await proc.wait() != os.EX_OK:
-            sys.exit(proc.returncode)
+            raise KarskError(f"Failed to build container image from {image}")
         return image_name
 
     async def __call__(
@@ -127,9 +127,8 @@ class _Engine:
         terminal: bool = False,
         network: bool = True,
     ) -> Process:
-        assert not (stdin and input), (
-            "Arguments 'stdin' and 'input' are mutually exclusive"
-        )
+        if stdin and input:
+            raise ValueError("Arguments 'stdin' and 'input' are mutually exclusive")
 
         volumes = volumes or []
         if isinstance(image, str):
@@ -185,7 +184,8 @@ class _Engine:
         )
 
         if input is not None:
-            assert proc.stdin is not None
+            if proc.stdin is None:
+                raise RuntimeError("Process stdin is None despite PIPE being requested")
             proc.stdin.write(input)
             proc.stdin.close()
 
@@ -239,7 +239,8 @@ class _Native:
         if isinstance(input, str):
             input = input.encode("utf-8")
         if input is not None:
-            assert proc.stdin is not None
+            if proc.stdin is None:
+                raise RuntimeError("Process stdin is None despite PIPE being requested")
             proc.stdin.write(input)
             proc.stdin.close()
 
