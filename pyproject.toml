@@ -2,22 +2,25 @@
 name = "karsk"
 description = "Tool for building and deploying software on HPC clusters"
 readme = "README.md"
+requires-python = ">=3.11"
 license = "GPL-3.0-or-later"
 authors = [{ name = "Zohar Malamant", email = "ZOM@equinor.com" }]
-requires-python = ">=3.11"
 dependencies = [
+  "aiofiles>=25.1.0",
   "click>=8.1.7",
+  "httpx>=0.28.1",
   "networkx>=3.3",
   "pydantic>=2.9.2",
-  "pyyaml>=6.0.2",
   "pytest-snapshot>=0.9.0",
+  "pyyaml>=6.0.2",
+  "rich>=15.0.0",
   "semver>=3.0.2",
   "six>=1.16.0",
-  "rich>=15.0.0",
-  "httpx>=0.28.1",
-  "aiofiles>=25.1.0",
 ]
 dynamic = ["version"]
+
+[project.scripts]
+karsk = "karsk.cli:cli"
 
 [dependency-groups]
 dev = [
@@ -31,17 +34,11 @@ dev = [
   "types-pyyaml>=6.0.12.20240917",
 ]
 docs = [
+  "griffe-pydantic>=1.0",
   "mkdocs>=1.6",
   "mkdocs-material>=9.0",
   "mkdocstrings[python]>=0.26",
-  "griffe-pydantic>=1.0",
 ]
-
-[project.scripts]
-karsk = "karsk.cli:cli"
-
-[tool.pytest.ini_options]
-asyncio_mode = "auto"
 
 [build-system]
 requires = ["hatchling", "uv-dynamic-versioning"]
@@ -52,6 +49,9 @@ source = "uv-dynamic-versioning"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/karsk"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
 
 [tool.uv]
 package = true
