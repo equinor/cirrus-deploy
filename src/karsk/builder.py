@@ -83,7 +83,7 @@ async def _async_build(
             terminal=True,
         )
 
-        _ = await proc.wait()
+        await proc.wait()
 
     return False
 
@@ -154,7 +154,7 @@ async def _build(ctx: Context, pkg: Package, tmp: str) -> None:
             else:
                 sys.exit(f"Could not move failed build at {out}")
 
-            _ = out.rename(fail_path)
+            out.rename(fail_path)
             sys.exit(
                 f"Building {pkg.fullname} failed. Inspect the build at: {fail_path}"
             )
@@ -199,7 +199,7 @@ def _build_env_for_package(paths: Paths, env_path: Path, main_package: Package) 
                     os.symlink(target, os.path.join(dstdir, f))
 
     # Write a manifest file
-    _ = (env_path / "manifest").write_text(main_package.manifest)
+    (env_path / "manifest").write_text(main_package.manifest)
 
 
 def _get_versions_path(paths: Paths, finalpkg: Package) -> Path | None:
@@ -246,7 +246,7 @@ async def install_all(ctx: Context, *, target_paths: Paths | None = None) -> Non
             print(f"Already installed: {pkg.fullname}", file=sys.stderr)
             continue
         to_path.parent.mkdir(parents=True, exist_ok=True)
-        _ = shutil.copytree(from_path, to_path)
+        shutil.copytree(from_path, to_path)
         print(f"Installed {pkg.fullname} to {to_path}")
 
     await _build_envs(ctx, target_paths)

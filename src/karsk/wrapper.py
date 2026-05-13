@@ -69,7 +69,7 @@ async def install_wrapper(ctx: Context, paths: Paths) -> None:
 
     shutil.rmtree(wrapper_path.parent, ignore_errors=True)
     wrapper_path.parent.mkdir(parents=True, exist_ok=True)
-    _ = shutil.copyfile(
+    shutil.copyfile(
         await build_wrapper(ctx),
         wrapper_path,
     )

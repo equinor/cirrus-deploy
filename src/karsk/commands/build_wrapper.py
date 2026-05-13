@@ -24,4 +24,4 @@ def subcommand_build_wrapper(
 ) -> None:
     engine_ = get_engine(engine, arch)
     paths = Paths(staging, is_staging=True)
-    _ = asyncio.run(build_wrapper(engine_, paths, rebuild=True))
+    asyncio.run(build_wrapper(engine_, paths, rebuild=True))
