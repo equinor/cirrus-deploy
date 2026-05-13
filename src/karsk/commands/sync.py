@@ -154,7 +154,7 @@ class Sync:
         stdout = io.StringIO()
         stderr = io.StringIO()
 
-        await asyncio.gather(
+        returncode, _, _ = await asyncio.gather(
             proc.wait(),
             redirect_output(
                 f"{area.name} {repr(context)}", proc.stdout, sys.stdout, stdout
@@ -164,8 +164,7 @@ class Sync:
             ),
         )
 
-        returncode = await proc.wait()
-        if proc.returncode != 0:
+        if returncode != 0:
             raise subprocess.CalledProcessError(
                 returncode, (program, *args), stdout.getvalue(), stderr.getvalue()
             )
