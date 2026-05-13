@@ -25,6 +25,13 @@ TARGET_TRIPLETS: dict[CpuArchName, str] = {
 }
 
 
+def _append_volume_if_exists(
+    volumes: list[VolumeBind], staging: Path, target: Path
+) -> None:
+    if staging.is_dir():
+        volumes.append((staging, target, "ro"))
+
+
 class Context:
     def __init__(
         self,
@@ -162,12 +169,10 @@ class Context:
 
             self.ensure_built(package)
 
-        if self.staging_paths.bin.is_dir():
-            volumes.append((self.staging_paths.bin, self.target_paths.bin, "ro"))
-        if self.staging_paths.versions.is_dir():
-            volumes.append(
-                (self.staging_paths.versions, self.target_paths.versions, "ro")
-            )
+        _append_volume_if_exists(volumes, self.staging_paths.bin, self.target_paths.bin)
+        _append_volume_if_exists(
+            volumes, self.staging_paths.versions, self.target_paths.versions
+        )
 
         return await self.engine(
             image,
