@@ -55,3 +55,4 @@ asyncio_mode = "auto"
 
 [tool.uv]
 package = true
+exclude-newer = "1 week"
