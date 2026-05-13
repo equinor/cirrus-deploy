@@ -2,6 +2,7 @@ from __future__ import annotations
 import asyncio
 import os
 from pathlib import Path
+from tempfile import mkdtemp
 from aiofiles.tempfile import NamedTemporaryFile
 import httpx
 
@@ -64,7 +65,8 @@ async def fetch_archive(config: ArchiveConfig, path: Path) -> None:
     # If the extracted archive only contains a directory at the root level, move it one up.
     files = list(path.glob("*"))
     if len(files) == 1 and files[0].is_dir():
-        temp = Path.cwd() / ".src"
+        temp = Path(mkdtemp(dir=path.parent))
+        temp.rmdir()
         files[0].rename(temp)
         path.rmdir()
         temp.rename(path)
