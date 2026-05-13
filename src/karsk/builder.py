@@ -11,6 +11,7 @@ import shutil
 import sys
 from tempfile import NamedTemporaryFile, TemporaryDirectory
 
+from karsk import KarskError
 from karsk.console import console
 from karsk.context import Context
 from karsk.engine import VolumeBind
@@ -159,10 +160,10 @@ async def _build(ctx: Context, pkg: Package, tmp: str) -> None:
                 ctx.staging_paths.store, f"fail-{pkg.fullname}"
             )
             if fail_path is None:
-                sys.exit(f"Could not move failed build at {out}")
+                raise KarskError(f"Could not move failed build at {out}")
 
             out.rename(fail_path)
-            sys.exit(
+            raise KarskError(
                 f"Building {pkg.fullname} failed. Inspect the build at: {fail_path}"
             )
 
@@ -225,7 +226,7 @@ def _get_versions_path(paths: Paths, finalpkg: Package) -> Path | None:
             print(f"Environment already exists at {path}", file=sys.stderr)
             return None
 
-    sys.exit(
+    raise KarskError(
         f"Out of range while trying to find a build number for {finalpkg.config.version}"
     )
 
@@ -247,7 +248,7 @@ async def install_all(ctx: Context, *, target_paths: Paths | None = None) -> Non
         to_path = target_paths.out(pkg)
 
         if not from_path.exists():
-            sys.exit(
+            raise KarskError(
                 f"Package {pkg.fullname} has not been built. Run 'karsk build' first."
             )
         if to_path.exists():

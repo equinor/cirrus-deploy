@@ -7,11 +7,11 @@ from platform import machine
 import shlex
 import shutil
 import subprocess
-import sys
 from typing import Literal, Protocol, TypeAlias
 from typing import IO, Any
 from warnings import warn
 
+from karsk import KarskError
 from karsk.console import console
 
 
@@ -37,7 +37,7 @@ def _normalized_cpu_arch() -> Literal["arm64", "amd64"]:
             # x86_64 is reported by Python on Linux
             return "amd64"
         case arch:
-            sys.exit(f"Unknown/unsupported CPU architecture '{arch}'")
+            raise KarskError(f"Unknown/unsupported CPU architecture '{arch}'")
 
 
 class Engine(Protocol):
@@ -109,7 +109,7 @@ class _Engine:
             image.parent,
         )
         if await proc.wait() != os.EX_OK:
-            sys.exit(proc.returncode)
+            raise KarskError(f"Failed to build container image from {image}")
         return image_name
 
     async def __call__(

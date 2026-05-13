@@ -24,7 +24,7 @@ def subcommand_test(
 
     ctx = Context.from_config_file(config_file, staging=staging, engine=engine)
     if ctx.config.tests is None:
-        sys.exit(
+        raise click.ClickException(
             f"Config file '{config_file}' doesn't have 'tests' field pointing to a directory with tests"
         )
 

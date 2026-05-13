@@ -4,6 +4,7 @@ import sys
 from typing import IO, Any, Self
 
 from asyncio.subprocess import Process
+from karsk import KarskError
 from karsk.config import Config, load_config
 from karsk.engine import (
     CpuArchName,
@@ -121,13 +122,10 @@ class Context:
                 missing.append(pname)
 
         if missing:
-            console.log(
-                f"[yellow]The following packages haven't been built:[bold] {', '.join(missing)}"
+            raise KarskError(
+                f"The following packages haven't been built: {', '.join(missing)}. "
+                "Run 'karsk build [CONFIG PATH]' to build all packages."
             )
-            console.log(
-                "[yellow]Run '[bold]karsk build [CONFIG PATH][/bold]' to build all packages"
-            )
-            sys.exit(1)
 
     async def run(
         self,

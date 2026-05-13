@@ -2,10 +2,10 @@ from __future__ import annotations
 import os
 from pathlib import Path
 import shutil
-import sys
 from tempfile import TemporaryDirectory
 from typing import overload
 
+from karsk import KarskError
 from karsk.console import console
 from karsk.context import Context
 from karsk.engine import Engine
@@ -56,7 +56,7 @@ async def build_wrapper(
             ],
         )
         if await proc.wait() != os.EX_OK:
-            sys.exit(proc.returncode)
+            raise KarskError("Failed to build wrapper binary")
 
         wrapper_path.parent.mkdir(parents=True, exist_ok=True)
         return shutil.copyfile(
