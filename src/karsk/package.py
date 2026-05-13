@@ -42,7 +42,10 @@ class Package:
         elif isinstance(self.config.src, ArchiveConfig):
             return Path(f"{self.config.name}-{self.config.version}")
         elif isinstance(self.config.src, FileConfig):
-            assert self.config.src.fullpath is not None
+            if self.config.src.fullpath is None:
+                raise ValueError(
+                    f"FileConfig for package '{self.config.name}' has no resolved fullpath"
+                )
             return self.config.src.fullpath
         else:
             raise RuntimeError("Unknown self.config.src type")

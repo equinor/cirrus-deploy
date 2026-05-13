@@ -37,7 +37,8 @@ def get_latest(basepath: Path) -> str:
         if latest is None or _version_key(version) > _version_key(latest[0]):
             latest = (version, name)
 
-    assert latest is not None
+    if latest is None:
+        raise RuntimeError(f"No valid semver versions found in {basepath}")
     return latest[1]
 
 

@@ -146,7 +146,8 @@ class Sync:
             start_new_session=True,
         )
 
-        assert proc.stdin is not None
+        if proc.stdin is None:
+            raise RuntimeError("Process stdin is None despite PIPE being requested")
         if input is not None:
             proc.stdin.write(input.encode())
         proc.stdin.close()

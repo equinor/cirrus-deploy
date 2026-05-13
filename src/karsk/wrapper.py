@@ -32,7 +32,8 @@ async def build_wrapper(
         paths = engine.staging_paths
         engine = engine.engine
 
-    assert paths is not None
+    if paths is None:
+        raise TypeError("paths is required when engine is not a Context")
 
     wrapper_path = paths.cache / f".wrapper.{engine.arch}"
     if wrapper_path.exists():

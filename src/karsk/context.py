@@ -153,9 +153,10 @@ class Context:
             volumes = []
 
         if build:
-            assert isinstance(package, str), (
-                "if build is True, package kwarg must be a specific package to be built"
-            )
+            if not isinstance(package, str):
+                raise TypeError(
+                    "When build=True, package must be a specific package name (str)"
+                )
             image = self.config.build_image
             package = [package]
 

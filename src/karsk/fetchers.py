@@ -22,7 +22,9 @@ async def fetch_git(config: GitConfig, path: Path) -> None:
 
     async def git(*args: str | Path) -> None:
         proc = await asyncio.create_subprocess_exec("git", *args, cwd=path, env=env)
-        assert await proc.wait() == os.EX_OK
+        returncode = await proc.wait()
+        if returncode != os.EX_OK:
+            raise RuntimeError(f"git {args[0]} failed with exit code {returncode}")
 
     try:
         path.mkdir(parents=True)
@@ -44,7 +46,10 @@ async def fetch_archive(config: ArchiveConfig, path: Path) -> None:
         return
 
     async with NamedTemporaryFile(delete=False) as file:
-        assert isinstance(file.name, (str, Path)), f"{type(file.name)=}"
+        if not isinstance(file.name, (str, Path)):
+            raise TypeError(
+                f"Expected file.name to be str or Path, got {type(file.name)}"
+            )
 
         # Download
         console.log("Downloading", config.url, "to", file.name)
@@ -77,8 +82,14 @@ async def fetch_single(ctx: Context, pkg: Package) -> None:
     path = ctx.staging_paths.src(pkg)
 
     if isinstance(config, GitConfig):
-        assert path is not None
+        if path is None:
+            raise ValueError(
+                f"Package {pkg.config.name} has git source but no src path"
+            )
         await fetch_git(config, path)
     elif isinstance(config, ArchiveConfig):
-        assert path is not None
+        if path is None:
+            raise ValueError(
+                f"Package {pkg.config.name} has archive source but no src path"
+            )
         await fetch_archive(config, path)

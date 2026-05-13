@@ -127,9 +127,8 @@ class _Engine:
         terminal: bool = False,
         network: bool = True,
     ) -> Process:
-        assert not (stdin and input), (
-            "Arguments 'stdin' and 'input' are mutually exclusive"
-        )
+        if stdin and input:
+            raise ValueError("Arguments 'stdin' and 'input' are mutually exclusive")
 
         volumes = volumes or []
         if isinstance(image, str):
@@ -185,7 +184,8 @@ class _Engine:
         )
 
         if input is not None:
-            assert proc.stdin is not None
+            if proc.stdin is None:
+                raise RuntimeError("Process stdin is None despite PIPE being requested")
             proc.stdin.write(input)
             proc.stdin.close()
 
@@ -239,7 +239,8 @@ class _Native:
         if isinstance(input, str):
             input = input.encode("utf-8")
         if input is not None:
-            assert proc.stdin is not None
+            if proc.stdin is None:
+                raise RuntimeError("Process stdin is None despite PIPE being requested")
             proc.stdin.write(input)
             proc.stdin.close()
 

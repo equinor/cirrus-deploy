@@ -11,5 +11,8 @@ _CONTEXT: Context | None = None
 
 @pytest.fixture
 def karsk() -> Context:
-    assert _CONTEXT is not None
+    if _CONTEXT is None:
+        raise RuntimeError(
+            "Karsk context not initialised. Run tests via 'karsk test'."
+        )
     return _CONTEXT
