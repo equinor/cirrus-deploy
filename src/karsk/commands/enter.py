@@ -40,10 +40,12 @@ class VolumeBindType(click.ParamType):
             )
 
         src_str, dst_str = parts[:2]
-        mode: Literal["ro", "rw"] = parts[2] if len(parts) == 3 else "rw"  # type: ignore[assignment]
+        mode_str = parts[2] if len(parts) == 3 else "rw"
 
-        if mode not in ("ro", "rw"):
+        if mode_str not in ("ro", "rw"):
             self.fail("Mode must be 'ro' or 'rw'", param, ctx)
+
+        mode: Literal["ro", "rw"] = "ro" if mode_str == "ro" else "rw"
 
         src = Path(src_str)
         if not src.exists():
