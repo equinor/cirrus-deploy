@@ -16,7 +16,6 @@ from karsk.engine import (
 )
 from karsk.package import Package
 from karsk.package_list import PackageList
-from karsk.console import console
 from karsk.paths import Paths
 
 

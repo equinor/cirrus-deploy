@@ -118,6 +118,31 @@ async def _build(ctx: Context, pkg: Package, tmp: str) -> None:
         shutil.rmtree(out)
         raise
 
+    env, volumes, cwd = _prepare_build_env(ctx, pkg, src, out, tmp)
+
+    with open(out / "build.log", "w") as buildlog:
+        print("Built with https://github.com/equinor/karsk", file=buildlog)
+        print(f"Build date: {datetime.now()}", file=buildlog)
+        print("----- BUILD CONFIG -----", file=buildlog)
+        print(pkg.config.model_dump_json(), file=buildlog)
+        print("------ BUILD  LOG ------", file=buildlog)
+
+        if not await _async_build(ctx, pkg, env, buildlog, volumes, cwd):
+            fail_path = _find_available_path(
+                ctx.staging_paths.store, f"fail-{pkg.fullname}"
+            )
+            if fail_path is None:
+                raise KarskError(f"Could not move failed build at {out}")
+
+            out.rename(fail_path)
+            raise KarskError(
+                f"Building {pkg.fullname} failed. Inspect the build at: {fail_path}"
+            )
+
+
+def _prepare_build_env(
+    ctx: Context, pkg: Package, src: Path | None, out: Path, tmp: str
+) -> tuple[dict[str, str], list[VolumeBind], Path]:
     env = {
         **{x.config.name: str(ctx.target_paths.out(x)) for x in pkg.depends},
         "tmp": tmp,
@@ -148,24 +173,7 @@ async def _build(ctx: Context, pkg: Package, tmp: str) -> None:
 
     volumes.append((out, ctx.target_paths.out(pkg), "rw"))
 
-    with open(out / "build.log", "w") as buildlog:
-        print("Built with https://github.com/equinor/karsk", file=buildlog)
-        print(f"Build date: {datetime.now()}", file=buildlog)
-        print("----- BUILD CONFIG -----", file=buildlog)
-        print(pkg.config.model_dump_json(), file=buildlog)
-        print("------ BUILD  LOG ------", file=buildlog)
-
-        if not await _async_build(ctx, pkg, env, buildlog, volumes, cwd):
-            fail_path = _find_available_path(
-                ctx.staging_paths.store, f"fail-{pkg.fullname}"
-            )
-            if fail_path is None:
-                raise KarskError(f"Could not move failed build at {out}")
-
-            out.rename(fail_path)
-            raise KarskError(
-                f"Building {pkg.fullname} failed. Inspect the build at: {fail_path}"
-            )
+    return env, volumes, cwd
 
 
 async def _build_packages(ctx: Context, stop_after: Package | None = None) -> None:
